@@ -1,0 +1,43 @@
+# Trillian: the append-only Merkle-tree log backing BOTH Rekor and the CT log.
+# Chart: sigstore/trillian 0.4.0  (trillian v1.8.0)
+# Installed into namespace trillian-system as release "trillian".
+#
+# Components rendered:
+#   trillian-mysql        MySQL 8 (gcr.io/trillian-opensource-ci/db_server) + 5Gi PVC
+#   trillian-createdb     Job: creates the "trillian" schema
+#   trillian-logserver    gRPC :8091 (tree admin + log API), HTTP :8090
+#   trillian-logsigner    sequencer: integrates queued leaves into the tree
+forceNamespace: trillian-system
+fullnameOverride: trillian
+namespace:
+  name: trillian-system
+  create: false            # created by 08-deploy-sigstore.sh
+
+mysql:
+  fullnameOverride: trillian-mysql
+  auth:
+    # Passwords are injected at install time from pki/secrets.env:
+    #   --set mysql.auth.password=... --set mysql.auth.rootPassword=...
+    username: trillian
+  persistence:
+    enabled: true
+    size: 5Gi              # kind's local-path provisioner backs this
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+
+logServer:
+  name: trillian-logserver
+  fullnameOverride: trillian-logserver
+  portHTTP: 8090
+  portRPC: 8091
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+
+logSigner:
+  name: trillian-logsigner
+  fullnameOverride: trillian-logsigner
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+
+createdb:
+  dbname: trillian

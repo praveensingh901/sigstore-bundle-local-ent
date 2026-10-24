@@ -1,0 +1,5 @@
+bucket       = "example-bank-tfstate-security"
+key          = "sigstore/security.tfstate"
+region       = "me-central-1"
+use_lockfile = true
+encrypt      = true

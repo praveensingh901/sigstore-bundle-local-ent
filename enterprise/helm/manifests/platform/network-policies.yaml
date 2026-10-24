@@ -1,0 +1,134 @@
+# NetworkPolicies (enforced by the VPC CNI network policy agent, terraform
+# eks.tf enableNetworkPolicy). Default deny ingress per namespace, then only
+# the calls the architecture needs (01-architecture.md §3).
+#
+# LIMIT: ALB targets are pod IPs (target-type: ip) and the ALB ENIs live in
+# the same VPC CIDR as nodes and pods (VPC CNI without custom networking), so
+# the "from the ALB" rules (ipBlock 10.60.0.0/15 = prod and DR VPCs) also
+# admit any pod in this cluster. That is acceptable because this cluster runs
+# only Sigstore platform workloads, and the write paths need credentials an
+# arbitrary pod does not have (a CT add-pre-chain needs a precertificate signed
+# by the Fulcio CA; Rekor entries need a valid signature). The namespace rules
+# are what separate components; for a hard boundary, enable VPC CNI custom
+# networking so pods use a separate CIDR and narrow these ipBlocks to the ALB
+# subnets.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: fulcio-system }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: fulcio-from-alb, namespace: fulcio-system }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ ipBlock: { cidr: 10.60.0.0/15 } }]
+      ports: [{ port: 5555, protocol: TCP }]
+    - from:                                     # CT log's createctconfig Job fetches the root
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ctlog-system } }
+      ports: [{ port: 5555, protocol: TCP }]
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: sigstore-monitor } }
+      ports: [{ port: 2112, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: ctlog-system }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: ctlog-from-fulcio-and-alb, namespace: ctlog-system }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: fulcio-system } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: sigstore-monitor } }
+        - ipBlock: { cidr: 10.60.0.0/15 }       # ALB, read-only routes only (ctlog-readonly Ingress)
+      ports: [{ port: 6962, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: trillian-system }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: trillian-from-logs, namespace: trillian-system }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: rekor-system } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ctlog-system } }
+      ports: [{ port: 8091, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: rekor-system }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: rekor-from-alb-and-monitor, namespace: rekor-system }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: { cidr: 10.60.0.0/15 }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: sigstore-monitor } }
+      ports: [{ port: 3000, protocol: TCP }, { port: 2112, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: tsa-system }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: tsa-from-alb, namespace: tsa-system }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ ipBlock: { cidr: 10.60.0.0/15 } }]
+      ports: [{ port: 5555, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: keycloak }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: keycloak-from-alb, namespace: keycloak }
+spec:
+  podSelector: { matchLabels: { app: keycloak } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ ipBlock: { cidr: 10.60.0.0/15 } }]
+      ports: [{ port: 8443, protocol: TCP }, { port: 9000, protocol: TCP }]
+    - from:                                     # Infinispan clustering between instances
+        - podSelector: { matchLabels: { app: keycloak } }
+      ports: [{ port: 7800, protocol: TCP }, { port: 57800, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: tuf-system }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: tuf-from-alb, namespace: tuf-system }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ ipBlock: { cidr: 10.60.0.0/15 } }]
+      ports: [{ port: 8080, protocol: TCP }]

@@ -1,0 +1,58 @@
+# Deployed as example-bank/sigstore-trust/.github/workflows/tuf-replicate.yml
+# Copies the published TUF tree from S3 to the Azure and on-prem replicas
+# after every successful tuf-publish run. Replicas are untrusted storage:
+# clients verify every file against their pinned root.
+name: tuf-replicate
+on:
+  workflow_run:
+    workflows: [tuf-publish]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  azure:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, sigstore-signing]
+    environment: tuf-replicate-azure
+    timeout-minutes: 15
+    permissions:
+      id-token: write          # AWS role (read S3) and Azure federated credential
+      contents: read
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/sigstore-tuf-replica-reader
+          aws-region: me-central-1
+      - name: Copy S3 -> Azure Blob ($web container of the static website)
+        env:
+          AZURE_CLIENT_ID: ${{ vars.TUF_AZ_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ACCOUNT: ${{ vars.TUF_AZ_STORAGE_ACCOUNT }}
+        run: |
+          aws s3 sync --no-progress s3://example-bank-sigstore-tuf/ tuf/
+          az login --service-principal --username "$AZURE_CLIENT_ID" --tenant "$AZURE_TENANT_ID" \
+            --federated-token "$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r .value)" >/dev/null
+          az storage blob sync --auth-mode login --account-name "$ACCOUNT" -c "\$web" -s tuf --exclude-path timestamp.json
+          az storage blob upload --auth-mode login --account-name "$ACCOUNT" -c "\$web" -n timestamp.json \
+            -f tuf/timestamp.json --overwrite --content-cache-control no-store
+
+  onprem:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, onprem-tuf]
+    environment: tuf-replicate-onprem
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/sigstore-tuf-replica-reader
+          aws-region: me-central-1
+      - name: Copy S3 -> on-prem web root (timestamp.json last)
+        run: |
+          aws s3 sync --no-progress --exclude timestamp.json s3://example-bank-sigstore-tuf/ /srv/tuf/
+          aws s3 cp --no-progress s3://example-bank-sigstore-tuf/timestamp.json /srv/tuf/timestamp.json.new
+          mv /srv/tuf/timestamp.json.new /srv/tuf/timestamp.json

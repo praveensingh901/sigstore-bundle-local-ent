@@ -1,0 +1,344 @@
+# Argo CD Applications for the Sigstore platform cluster (dr).
+# Sync waves: controllers (-3, -2) -> namespaces, secrets, issuers, network
+# policies (-1) -> Keycloak operator (0) -> Trillian (1) -> Keycloak, TUF
+# mirror, rekor-monitor (2) -> Fulcio, Rekor, TSA (3) -> CT log (4; its config
+# Job fetches Fulcio's root).
+# Bootstrap once: kubectl apply -f enterprise/gitops/platform/project.yaml -f enterprise/gitops/platform/apps-dr.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://aws.github.io/eks-charts
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: aws-load-balancer-controller
+      targetRevision: 3.6.1
+      helm:
+        releaseName: aws-load-balancer-controller
+        valueFiles:
+          - $values/enterprise/helm/values/common/aws-load-balancer-controller.yaml
+          - $values/enterprise/helm/values/dr/aws-load-balancer-controller.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://charts.jetstack.io
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: cert-manager
+      targetRevision: v1.21.3
+      helm:
+        releaseName: cert-manager
+        valueFiles:
+          - $values/enterprise/helm/values/common/cert-manager.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-secrets
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://charts.external-secrets.io
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: external-secrets
+      targetRevision: 2.14.0
+      helm:
+        releaseName: external-secrets
+        valueFiles:
+          - $values/enterprise/helm/values/common/external-secrets.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-privateca-issuer
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://cert-manager.github.io/aws-privateca-issuer
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: aws-privateca-issuer
+      targetRevision: v1.11.1
+      helm:
+        releaseName: aws-privateca-issuer
+        valueFiles:
+          - $values/enterprise/helm/values/common/aws-privateca-issuer.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-manifests
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://github.com/example-bank/sigstore-platform.git
+    targetRevision: main
+    path: enterprise/helm/manifests/overlays/dr/platform
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak
+  source:
+    repoURL: https://github.com/example-bank/sigstore-platform.git
+    targetRevision: main
+    path: enterprise/vendor/keycloak-operator
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trillian
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trillian-system
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://sigstore.github.io/helm-charts
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: trillian
+      targetRevision: 0.4.1
+      helm:
+        releaseName: trillian
+        valueFiles:
+          - $values/enterprise/helm/values/common/trillian.yaml
+          - $values/enterprise/helm/values/prod/trillian.yaml
+          - $values/enterprise/helm/values/dr/trillian.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fulcio
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fulcio-system
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://sigstore.github.io/helm-charts
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: fulcio
+      targetRevision: 2.11.4
+      helm:
+        releaseName: fulcio
+        valueFiles:
+          - $values/enterprise/helm/values/common/fulcio.yaml
+          - $values/enterprise/helm/values/prod/fulcio.yaml
+          - $values/enterprise/helm/values/dr/fulcio.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rekor
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rekor-system
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://sigstore.github.io/helm-charts
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: rekor
+      targetRevision: 1.8.7
+      helm:
+        releaseName: rekor
+        valueFiles:
+          - $values/enterprise/helm/values/common/rekor.yaml
+          - $values/enterprise/helm/values/prod/rekor.yaml
+          - $values/enterprise/helm/values/dr/rekor.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tsa
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tsa-system
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://sigstore.github.io/helm-charts
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: tsa
+      targetRevision: 2.1.5
+      helm:
+        releaseName: tsa
+        valueFiles:
+          - $values/enterprise/helm/values/common/tsa.yaml
+          - $values/enterprise/helm/values/prod/tsa.yaml
+          - $values/enterprise/helm/values/dr/tsa.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ctlog
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ctlog-system
+  sources:
+    # Chart mirrored into the platform ECR (OCI) and verified before use.
+    # Upstream: https://sigstore.github.io/helm-charts
+    - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+      chart: ctlog
+      targetRevision: 0.2.69
+      helm:
+        releaseName: ctlog
+        valueFiles:
+          - $values/enterprise/helm/values/common/ctlog.yaml
+          - $values/enterprise/helm/values/prod/ctlog.yaml
+          - $values/enterprise/helm/values/dr/ctlog.yaml
+    - repoURL: https://github.com/example-bank/sigstore-platform.git
+      targetRevision: main
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-services
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: sigstore-platform
+  destination:
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://github.com/example-bank/sigstore-platform.git
+    targetRevision: main
+    path: enterprise/helm/manifests/overlays/dr/services
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [ServerSideApply=true]

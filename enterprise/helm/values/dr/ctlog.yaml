@@ -1,0 +1,9 @@
+# CT log — DR
+server:
+  replicaCount: 0
+createtree:
+  enabled: false
+# The config Job waits for Fulcio and Trillian, which run 0 replicas in warm
+# standby. The failover PR sets this to true together with the replica counts.
+createctconfig:
+  enabled: false

@@ -1,0 +1,149 @@
+# TUF repository mirror for AWS consumers: https://tuf.sigstore.corp.example
+# The S3 bucket (versioned, Object Lock) is the source of truth (the publisher
+# writes the same signed files to the prod and the DR-Region bucket); this
+# Deployment syncs it every minute into an emptyDir and nginx serves it
+# read-only. Served on the separate "trust" ALB (all consumer networks).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tuf-server
+  namespace: tuf-system
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-prod-tuf
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tuf-nginx
+  namespace: tuf-system
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      server_tokens off;
+      root /srv/tuf;
+      autoindex off;
+      location = /healthz { access_log off; default_type text/plain; return 200 "ok\n"; }
+      location / {
+        limit_except GET { deny all; }      # GET implies HEAD
+        # timestamp.json must never be cached; versioned metadata and targets can be.
+        location = /timestamp.json { add_header Cache-Control "no-store" always; }
+        location /targets/ { add_header Cache-Control "public, max-age=3600" always; }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tuf-server
+  namespace: tuf-system
+  labels: { app: tuf-server }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: tuf-server }
+  template:
+    metadata:
+      labels: { app: tuf-server }
+    spec:
+      serviceAccountName: tuf-server
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: tuf-server } }
+      initContainers:
+        - name: initial-sync           # serve nothing until the first full copy exists
+          image: 222222222222.dkr.ecr.me-central-1.amazonaws.com/mirror/amazon/aws-cli:2.38.5
+          command: ["/bin/sh", "-c", 'aws s3 sync --no-progress --exact-timestamps "s3://$TUF_BUCKET/" /srv/tuf/']
+          env: &env
+            - { name: HOME, value: /tmp }
+            - { name: TUF_BUCKET, value: example-bank-sigstore-tuf }   # DR overlay: ...-tuf-dr
+          securityContext: &sc
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts: [{ name: repo, mountPath: /srv/tuf }, { name: tmp, mountPath: /tmp }]
+      containers:
+        - name: sync
+          image: 222222222222.dkr.ecr.me-central-1.amazonaws.com/mirror/amazon/aws-cli:2.38.5
+          command: ["/bin/sh", "-c"]
+          # Same upload order as the publisher: everything else first, timestamp.json last.
+          args:
+            - |
+              while true; do
+                aws s3 sync --no-progress --exact-timestamps --exclude timestamp.json "s3://$TUF_BUCKET/" /srv/tuf/ &&
+                aws s3 cp --no-progress "s3://$TUF_BUCKET/timestamp.json" /srv/tuf/timestamp.json.new &&
+                mv /srv/tuf/timestamp.json.new /srv/tuf/timestamp.json
+                sleep 60
+              done
+          env: *env
+          securityContext: *sc
+          resources: { requests: { cpu: 20m, memory: 64Mi } }
+          volumeMounts: [{ name: repo, mountPath: /srv/tuf }, { name: tmp, mountPath: /tmp }]
+        - name: nginx
+          image: 222222222222.dkr.ecr.me-central-1.amazonaws.com/mirror/nginxinc/nginx-unprivileged:1.31.7-alpine
+          ports: [{ containerPort: 8080, name: http }]
+          readinessProbe: { httpGet: { path: /healthz, port: 8080 } }
+          livenessProbe: { httpGet: { path: /healthz, port: 8080 } }
+          securityContext: *sc
+          resources: { requests: { cpu: 20m, memory: 32Mi } }
+          volumeMounts:
+            - { name: repo, mountPath: /srv/tuf, readOnly: true }
+            - { name: nginx-conf, mountPath: /etc/nginx/conf.d, readOnly: true }
+            - { name: nginx-tmp, mountPath: /tmp }
+      volumes:
+        - { name: repo, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+        - { name: nginx-tmp, emptyDir: {} }
+        - { name: nginx-conf, configMap: { name: tuf-nginx } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: tuf-server
+  namespace: tuf-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: tuf-server }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tuf-server
+  namespace: tuf-system
+spec:
+  selector: { app: tuf-server }
+  ports: [{ name: http, port: 80, targetPort: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tuf
+  namespace: tuf-system
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: sigstore-trust          # separate ALB from signing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-central-1:222222222222:certificate/REPLACE
+    alb.ingress.kubernetes.io/security-groups: sg-REPLACE-trust     # terraform output alb_security_group_ids.trust
+spec:
+  ingressClassName: alb
+  rules:
+    - host: tuf.sigstore.corp.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: tuf-server, port: { number: 80 } } }

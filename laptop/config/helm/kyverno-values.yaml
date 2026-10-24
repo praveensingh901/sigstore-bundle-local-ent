@@ -1,0 +1,26 @@
+# Kyverno 1.19.1 (chart kyverno/kyverno 3.9.1) — laptop sizing.
+# The TLS root CA is injected at install time:
+#   --set-file global.caCertificates.data=pki/tls/ca.crt
+# so every Kyverno controller trusts registry.sigstore.local / tuf.sigstore.local.
+# Production: admissionController.replicas: 3 and PodDisruptionBudgets (docs/04).
+admissionController:
+  replicas: 1
+  container:
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { memory: 512Mi }
+backgroundController:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+cleanupController:
+  replicas: 1
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+reportsController:
+  replicas: 1
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+config:
+  # Never send Kyverno's own namespaces or kube-system to the webhook.
+  resourceFiltersExcludeNamespaces: [kube-system, kyverno]

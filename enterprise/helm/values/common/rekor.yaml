@@ -1,0 +1,96 @@
+# Rekor — chart sigstore/rekor 1.8.7 (rekor-server v1.5.4)
+forceNamespace: rekor-system
+fullnameOverride: rekor
+namespace:
+  name: rekor-system
+  create: false
+
+redis:
+  enabled: false                # search index lives in MySQL
+  hostname: ""
+
+mysql:
+  enabled: false                # external Aurora (same cluster as Trillian, database rekor_index)
+  # hostname: per environment
+  port: 3306
+  auth:
+    existingSecret: rekor-index-db   # keys mysql-user, mysql-password, mysql-database
+
+server:
+  fullnameOverride: rekor-server
+  replicaCount: 3
+  kmsType: none                 # IRSA
+  # signer: awskms:///<alias ARN>  per environment
+  logging:
+    production: true
+  searchIndex:
+    storageProvider: mysql
+    mysql:
+      maxOpenConnections: 20
+      maxIdleConnections: 5
+      connMaxLifetime: 5m
+  # The chart default is a file:// bucket on a ReadWriteOnce PVC, which three
+  # replicas cannot share. Attestations are stored next to the image in the
+  # registry (OCI referrers), so Rekor keeps only the log entries.
+  attestation_storage:
+    enabled: false
+    persistence:
+      enabled: false
+  retrieve_api:
+    enabled: true
+  # Aurora requires TLS. The chart cannot mount a CA bundle into Rekor, so the
+  # index DSN is repeated with tls=preferred (encrypted; the server certificate
+  # is not verified). Accepted risk, 07-security-controls.md §3: the path is
+  # inside the VPC and limited by security groups to EKS nodes.
+  extraArgs:
+    # Checkpoint origin "<hostname> - <treeID>": pin it, or each replica (and
+    # the DR pods) signs with its own pod name as origin.
+    - "--rekor_server.hostname=rekor.sigstore.corp.example"
+    - "--search_index.mysql.dsn=$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_HOSTNAME):$(MYSQL_PORT))/$(MYSQL_DATABASE)?parseTime=true&interpolateParams=true&tls=preferred"
+  config:
+    key: treeID
+    # treeID: set in prod/rekor.yaml once created
+  serviceAccount:
+    create: true
+    name: rekor-server
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: server
+                app.kubernetes.io/name: rekor
+            topologyKey: topology.kubernetes.io/zone
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internal
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/group.name: sigstore-signing
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/healthcheck-path: /ping
+      alb.ingress.kubernetes.io/healthcheck-port: "3000"
+    hosts:
+      - host: rekor.sigstore.corp.example
+        path: /
+    tls: []
+
+createtree:
+  fullnameOverride: rekor-createtree
+  # The createtree Job reuses the tree ID already in ConfigMap rekor-config
+  # (rendered from server.config.treeID), so once the ID is pinned in Git a
+  # re-sync never creates a second tree.
+
+trillian:
+  enabled: false
+  forceNamespace: trillian-system
+  logServer:
+    name: trillian-logserver
+    portRPC: 8091

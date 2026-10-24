@@ -1,0 +1,63 @@
+# azure-pipelines.yml — Azure DevOps Server / self-hosted agents + private Sigstore.
+# -----------------------------------------------------------------------------
+# Fulcio has no built-in "Azure Pipelines" issuer type, so pipelines use the
+# Keycloak machine identity (client_credentials). Store the secret in a
+# variable group linked to Azure Key Vault or as a secret variable:
+#   SIGSTORE_CI_CLIENT_SECRET   (pki/secrets.env CI_CLIENT_SECRET)
+# For per-project identities create one Keycloak client per project, each with
+# its own service-account e-mail (e.g. payments-ci@sigstore.local) and pin that
+# e-mail in the admission policy for the project's namespaces.
+#
+# Agent prerequisites: cosign v3.1.3, crane, jq, curl, docker;
+#   /etc/sigstore/ca.crt and /etc/sigstore/tuf-root.json (see docs/04 §6).
+# -----------------------------------------------------------------------------
+trigger:
+  branches:
+    include: [main]
+
+pool:
+  name: sigstore-linux        # self-hosted agent pool inside the air gap
+
+variables:
+  - group: sigstore-ci        # contains SIGSTORE_CI_CLIENT_SECRET (secret)
+  - name: IMAGE
+    value: registry.sigstore.local/demo/hello
+  - name: OIDC_ISSUER
+    value: https://keycloak.sigstore.local/realms/sigstore
+  - name: TUF_MIRROR
+    value: https://tuf.sigstore.local
+  - name: SSL_CERT_FILE
+    value: $(Agent.TempDirectory)/ca-bundle.pem
+
+steps:
+  - bash: |
+      set -euo pipefail
+      cat /etc/ssl/certs/ca-certificates.crt /etc/sigstore/ca.crt > "$SSL_CERT_FILE"
+      cosign initialize --mirror "$TUF_MIRROR" --root /etc/sigstore/tuf-root.json
+    displayName: Trust private Sigstore
+
+  - bash: |
+      set -euo pipefail
+      TAG="$(Build.SourceVersion)"; TAG="${TAG:0:12}"
+      docker build -t "$IMAGE:$TAG" examples/demo-app
+      docker save "$IMAGE:$TAG" -o image.tar
+      crane push image.tar "$IMAGE:$TAG"
+      echo "##vso[task.setvariable variable=DIGEST]$(crane digest "$IMAGE:$TAG")"
+    displayName: Build and push
+
+  - bash: |
+      set -euo pipefail
+      TOKEN=$(curl -fsS "$OIDC_ISSUER/protocol/openid-connect/token" \
+        -d grant_type=client_credentials -d client_id=sigstore-ci \
+        --data-urlencode client_secret="$CLIENT_SECRET" -d scope="openid email" | jq -r .access_token)
+      echo "##vso[task.setsecret]$TOKEN"
+      cosign sign --yes --identity-token "$TOKEN" "$IMAGE@$(DIGEST)"
+    displayName: Keyless sign
+    env:
+      CLIENT_SECRET: $(SIGSTORE_CI_CLIENT_SECRET)
+
+  - bash: |
+      set -euo pipefail
+      cosign verify --certificate-identity ci@sigstore.local \
+        --certificate-oidc-issuer "$OIDC_ISSUER" "$IMAGE@$(DIGEST)"
+    displayName: Verify signature

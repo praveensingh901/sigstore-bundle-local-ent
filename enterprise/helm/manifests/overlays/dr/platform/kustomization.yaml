@@ -1,0 +1,43 @@
+# DR (me-south-1): same objects, Region-bound values replaced.
+# Secrets Manager names use the DR environment prefix (terraform name = sigstore-dr);
+# the ceremony operator writes the CT key into both Regions (10-deployment-runbook.md §3).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../platform
+patches:
+  - target: { kind: ClusterSecretStore, name: aws-secrets-manager }
+    patch: |-
+      - { op: replace, path: /spec/provider/aws/region, value: me-south-1 }
+  - target: { kind: SecretStore, name: ctlog-key }
+    patch: |-
+      - { op: replace, path: /spec/provider/aws/region, value: me-south-1 }
+  - target: { kind: ServiceAccount, name: ctlog-secret-reader }
+    patch: |-
+      - { op: replace, path: /metadata/annotations/eks.amazonaws.com~1role-arn, value: "arn:aws:iam::222222222222:role/sigstore-dr-ctlog" }
+  - target: { kind: ExternalSecret, name: trillian-db }
+    patch: |-
+      - { op: replace, path: /spec/dataFrom/0/extract/key, value: sigstore-dr/app/trillian-db }
+  - target: { kind: ExternalSecret, name: rekor-index-db }
+    patch: |-
+      - { op: replace, path: /spec/dataFrom/0/extract/key, value: sigstore-dr/app/rekor-index-db }
+  - target: { kind: ExternalSecret, name: keycloak-db }
+    patch: |-
+      - { op: replace, path: /spec/dataFrom/0/extract/key, value: sigstore-dr/app/keycloak-db }
+  - target: { kind: ExternalSecret, name: keycloak-idp }
+    patch: |-
+      - { op: replace, path: /spec/dataFrom/0/extract/key, value: sigstore-dr/app/keycloak-idp }
+  - target: { kind: ExternalSecret, name: keycloak-ci-clients }
+    patch: |-
+      - { op: replace, path: /spec/dataFrom/0/extract/key, value: sigstore-dr/app/keycloak-ci-clients }
+  - target: { kind: ExternalSecret, name: ctlog-signer }
+    patch: |-
+      - { op: replace, path: /spec/dataFrom/0/extract/key, value: sigstore-dr/ctlog/private-key }
+  - target: { kind: AWSPCAClusterIssuer, name: sigstore-tls }
+    patch: |-
+      - { op: replace, path: /spec/arn, value: "arn:aws:acm-pca:me-south-1:111111111111:certificate-authority/REPLACE" }
+      - { op: replace, path: /spec/region, value: me-south-1 }
+  - target: { kind: Ingress }
+    patch: |-
+      - { op: replace, path: /metadata/annotations/alb.ingress.kubernetes.io~1certificate-arn, value: "arn:aws:acm:me-south-1:222222222222:certificate/REPLACE" }
+      - { op: replace, path: /metadata/annotations/alb.ingress.kubernetes.io~1security-groups, value: sg-REPLACE-dr-signing }

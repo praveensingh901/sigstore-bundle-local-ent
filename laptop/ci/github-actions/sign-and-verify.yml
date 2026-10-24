@@ -1,0 +1,89 @@
+# .github/workflows/sign-and-verify.yml
+# -----------------------------------------------------------------------------
+# GitHub Enterprise Server (air-gapped) or a self-hosted runner that can reach
+# the private Sigstore endpoints. Nothing here talks to *.sigstore.dev.
+#
+# Runner prerequisites (bake into the runner image):
+#   * cosign v3.1.3 and crane on PATH (from bundle/bin)
+#   * /etc/sigstore/ca.crt          = pki/tls/ca.crt    (TLS root)
+#   * /etc/sigstore/tuf-root.json   = out/tuf/root.json (TUF bootstrap root)
+#   * DNS for *.sigstore.local (or your production names)
+#
+# Identity options (pick ONE):
+#   A) Keycloak machine identity (works everywhere, used below):
+#      repo secret SIGSTORE_CI_CLIENT_SECRET = pki/secrets.env CI_CLIENT_SECRET
+#      -> certificate SAN: ci@sigstore.local
+#   B) GHES native OIDC (id-token: write). Add to Fulcio's config:
+#        "https://<ghes-host>/_services/token": {
+#           "IssuerURL": "https://<ghes-host>/_services/token",
+#           "ClientID": "sigstore", "Type": "github-workflow" }
+#      -> SAN: https://<ghes-host>/<org>/<repo>/.github/workflows/<file>@<ref>
+#      (see docs/04-enterprise-rollout.md §3.4)
+# -----------------------------------------------------------------------------
+name: build-sign-verify
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write          # only needed for option B
+
+env:
+  REGISTRY: registry.sigstore.local
+  IMAGE: registry.sigstore.local/demo/hello
+  OIDC_ISSUER: https://keycloak.sigstore.local/realms/sigstore
+  TUF_MIRROR: https://tuf.sigstore.local
+  SSL_CERT_FILE: /etc/sigstore/ca-bundle.pem
+
+jobs:
+  build-sign:
+    runs-on: [self-hosted, linux, sigstore]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trust private TLS root + private Sigstore (TUF)
+        run: |
+          cat /etc/ssl/certs/ca-certificates.crt /etc/sigstore/ca.crt > /etc/sigstore/ca-bundle.pem
+          # Pulls trusted_root.json + signing_config.v0.2.json from the private mirror.
+          cosign initialize --mirror "$TUF_MIRROR" --root /etc/sigstore/tuf-root.json
+
+      - name: Build and push
+        id: push
+        run: |
+          docker build -t "$IMAGE:${GITHUB_SHA::12}" examples/demo-app
+          docker save "$IMAGE:${GITHUB_SHA::12}" -o image.tar
+          crane push image.tar "$IMAGE:${GITHUB_SHA::12}"
+          echo "digest=$(crane digest "$IMAGE:${GITHUB_SHA::12}")" >> "$GITHUB_OUTPUT"
+
+      - name: Get OIDC token (option A — Keycloak client_credentials)
+        id: oidc
+        env:
+          CLIENT_SECRET: ${{ secrets.SIGSTORE_CI_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(curl -fsS "$OIDC_ISSUER/protocol/openid-connect/token" \
+            -d grant_type=client_credentials -d client_id=sigstore-ci \
+            --data-urlencode client_secret="$CLIENT_SECRET" -d scope="openid email" | jq -r .access_token)
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Keyless sign + attest
+        env:
+          REF: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+          TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          cosign sign --yes --identity-token "$TOKEN" "$REF"
+          cat > provenance.json <<EOF
+          {"repo":"${GITHUB_REPOSITORY}","commit":"${GITHUB_SHA}","run":"${GITHUB_RUN_ID}"}
+          EOF
+          cosign attest --yes --identity-token "$TOKEN" \
+            --type https://example.com/ci-provenance/v1 --predicate provenance.json "$REF"
+
+      - name: Verify (what admission control will check)
+        env:
+          REF: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+        run: |
+          cosign verify --certificate-identity ci@sigstore.local \
+            --certificate-oidc-issuer "$OIDC_ISSUER" "$REF"
+          cosign verify-attestation --type https://example.com/ci-provenance/v1 \
+            --certificate-identity ci@sigstore.local --certificate-oidc-issuer "$OIDC_ISSUER" "$REF" >/dev/null

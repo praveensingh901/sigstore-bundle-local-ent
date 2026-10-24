@@ -1,0 +1,25 @@
+# Argo CD project: what the platform Applications may deploy, and where.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: sigstore-platform
+  namespace: argocd
+spec:
+  description: Private Sigstore platform (Fulcio, Rekor, CT log, Trillian, TSA, Keycloak, TUF)
+  sourceRepos:
+    - https://github.com/example-bank/sigstore-platform.git
+    - 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - { group: "", kind: Namespace }
+    - { group: rbac.authorization.k8s.io, kind: ClusterRole }
+    - { group: rbac.authorization.k8s.io, kind: ClusterRoleBinding }
+    - { group: apiextensions.k8s.io, kind: CustomResourceDefinition }
+    - { group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration }
+    - { group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration }
+    - { group: external-secrets.io, kind: ClusterSecretStore }
+    - { group: awspca.cert-manager.io, kind: AWSPCAClusterIssuer }
+  namespaceResourceBlacklist:
+    - { group: "", kind: ResourceQuota }

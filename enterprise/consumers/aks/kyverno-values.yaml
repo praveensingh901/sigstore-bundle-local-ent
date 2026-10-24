@@ -1,0 +1,11 @@
+# Kyverno on AKS (layered on helm/values/common/kyverno.yaml)
+global:
+  image:
+    registry: examplebank.azurecr.io/mirror/reg.kyverno.io
+admissionController:
+  podLabels:
+    azure.workload.identity/use: "true"
+  rbac:
+    serviceAccount:
+      annotations:
+        azure.workload.identity/client-id: 00000000-0000-0000-0000-000000000000   # identity with AcrPull

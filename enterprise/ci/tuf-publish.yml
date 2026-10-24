@@ -1,0 +1,66 @@
+# Deployed as example-bank/sigstore-trust/.github/workflows/tuf-publish.yml
+# Re-signs snapshot + timestamp with the online KMS key every 6 hours and
+# publishes to every replica (04-trust-distribution.md §4). Also runs after a
+# custodian-signed change to root/targets is merged.
+# OIDC sub: repo:example-bank/sigstore-trust:environment:tuf-publish
+# (trust policy of role sigstore-tuf-publisher, terraform environments/security).
+name: tuf-publish
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+    paths: ["repo/staged/**", "repo/targets/**"]
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: tuf-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: [self-hosted, sigstore-signing]
+    environment: tuf-publish
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      ONLINE_KEY: arn:aws:kms:me-central-1:111111111111:alias/sigstore/tuf-online
+      BUCKETS: example-bank-sigstore-tuf example-bank-sigstore-tuf-dr
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/sigstore-tuf-publisher
+          aws-region: me-central-1
+      - name: Install tufctl dependencies (internal PyPI mirror; versions pinned)
+        run: python3 -m pip install -r tools/tuf/requirements.txt   # copy of enterprise/tuf/requirements.txt
+      - name: Fetch the currently published state
+        run: |
+          mkdir -p repo/publish
+          aws s3 sync --no-progress "s3://${BUCKETS%% *}/" repo/publish/
+      - name: Sign snapshot and timestamp
+        run: |
+          aws kms get-public-key --key-id "$ONLINE_KEY" --query PublicKey --output text \
+            | base64 -d | openssl pkey -pubin -inform DER -out "$RUNNER_TEMP/online.pub"
+          python3 tools/tuf/tufctl.py refresh --repo repo \
+            --online-signer "awskms:$ONLINE_KEY" --online-pub "$RUNNER_TEMP/online.pub"
+          # Anchor the check in the committed root, not in what was just downloaded.
+          python3 tools/tuf/tufctl.py verify --repo repo --root root/1.root.json
+      - name: Upload (timestamp.json last)
+        run: |
+          for b in $BUCKETS; do
+            aws s3 sync --no-progress --exclude timestamp.json repo/publish/ "s3://$b/"
+            aws s3 cp --no-progress --cache-control no-store repo/publish/timestamp.json "s3://$b/timestamp.json"
+          done
+      # Azure Blob and on-prem replicas are refreshed by tuf-replicate.yml, which
+      # runs on `workflow_run` completion of this workflow with its own
+      # identities (Azure federated credential, on-prem runner) and copies the
+      # same files in the same order.
+      - name: Freshness
+        run: |
+          exp="$(jq -r .signed.expires repo/publish/timestamp.json)"
+          echo "### TUF timestamp expires $exp" >> "$GITHUB_STEP_SUMMARY"

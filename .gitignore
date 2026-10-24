@@ -1,0 +1,26 @@
+# Secrets and generated material never go to Git
+*.key
+*.p12
+*.pfx
+*.enc.key
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+backend.hcl
+.terraform/
+crash.log
+laptop/pki/
+laptop/out/
+laptop/bundle/
+laptop/.generated/
+laptop/backups/
+enterprise/tuf/repo/
+enterprise/images/runner/tools/
+enterprise/images/runner/ca.crt
+enterprise/images/runner/tuf-root.json
+tutorial/dist/
+__pycache__/
+*.pyc
+.DS_Store
+laptop/test/compose/.run/

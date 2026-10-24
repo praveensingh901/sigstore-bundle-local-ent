@@ -1,0 +1,14 @@
+# Rekor — DR. Aurora endpoint is the global secondary (read-only until promoted).
+mysql:
+  hostname: sigstore-dr-mysql.cluster-REPLACE.me-south-1.rds.amazonaws.com
+server:
+  replicaCount: 0
+  signer: awskms:///arn:aws:kms:me-south-1:111111111111:alias/sigstore/rekor
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-dr-rekor
+  ingress:
+    annotations:
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-south-1:222222222222:certificate/REPLACE
+      alb.ingress.kubernetes.io/security-groups: sg-REPLACE-dr-signing
+# Tree ID is inherited from prod/rekor.yaml: never create a tree in DR.

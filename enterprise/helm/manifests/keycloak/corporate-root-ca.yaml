@@ -1,0 +1,14 @@
+# Public certificate of the corporate root, used as a Keycloak truststore
+# (AD FS is served with a corporate TLS certificate). Public data; a Secret
+# only because the Keycloak CR's truststores field references Secrets.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: corporate-root-ca
+  namespace: keycloak
+type: Opaque
+stringData:
+  root.crt: |
+    -----BEGIN CERTIFICATE-----
+    REPLACE-WITH-enterprise/pki/root.crt
+    -----END CERTIFICATE-----

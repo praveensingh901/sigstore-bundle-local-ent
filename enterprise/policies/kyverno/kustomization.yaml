@@ -1,0 +1,12 @@
+# Cluster-wide policy pack. Platform overlays in enterprise/consumers/<platform>/
+# replace the TUF mirror, registry globs and credentials. Team policies
+# (teams/*.yaml, NamespacedImageValidatingPolicy) are deployed by each team's
+# Argo CD project.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - allowed-registries.yaml
+  - baseline.yaml
+  - third-party.yaml
+  - staff-signed-optin.yaml
+  - protect-labels.yaml

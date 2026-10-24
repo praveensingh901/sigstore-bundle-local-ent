@@ -1,0 +1,44 @@
+# Only the platform team's Argo CD may set or change the two labels that relax
+# enforcement on a namespace (05-consumer-clusters.md §3).
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: protect-sigstore-namespace-labels
+  annotations:
+    policies.kyverno.io/title: Protect break-glass and staff opt-in labels
+    policies.kyverno.io/severity: high
+spec:
+  validationActions: [Deny]           # enforced from day one
+  failurePolicy: Fail
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["namespaces"]
+        operations: ["CREATE", "UPDATE"]
+  variables:
+    - name: keys
+      expression: "['sigstore.example-bank.com/enforce', 'sigstore.example-bank.com/allow-staff-signatures']"
+    - name: newLabels
+      expression: "object.metadata.?labels.orValue({})"
+    - name: oldLabels
+      expression: "request.operation == 'UPDATE' ? oldObject.metadata.?labels.orValue({}) : {}"
+    - name: changed
+      expression: >-
+        variables.keys.exists(k,
+          (k in variables.newLabels) != (k in variables.oldLabels) ||
+          ((k in variables.newLabels) && variables.newLabels[k] != variables.oldLabels[k]))
+    - name: allowed
+      # Argo CD application controller of the platform project (adjust per cluster).
+      expression: >-
+        request.userInfo.username in [
+          'system:serviceaccount:argocd:argocd-application-controller',
+          'system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller']
+  validations:
+    - expression: "!variables.changed || variables.allowed"
+      messageExpression: >-
+        'only the platform Argo CD may set or change ' + variables.keys.join(' / ') +
+        '; requested by ' + request.userInfo.username

@@ -1,0 +1,17 @@
+# Timestamp Authority — production
+server:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-prod-tsa
+  args:
+    kms_key_resource: awskms:///arn:aws:kms:me-central-1:111111111111:alias/sigstore/tsa
+    # enterprise/pki/tsa-chain.pem (TSA certificate first, root last)
+    cert_chain: |
+      -----BEGIN CERTIFICATE-----
+      REPLACE-WITH-enterprise/pki/tsa-chain.pem
+      -----END CERTIFICATE-----
+  ingress:
+    http:
+      annotations:
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-central-1:222222222222:certificate/REPLACE
+        alb.ingress.kubernetes.io/security-groups: sg-REPLACE-signing

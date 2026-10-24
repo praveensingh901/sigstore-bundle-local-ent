@@ -1,0 +1,116 @@
+# Keycloak 26.8.1 through the Keycloak Operator (CR k8s.keycloak.org/v2beta1).
+# Storage: Aurora PostgreSQL (TLS verified with the RDS CA bundle).
+# Served at https://id.sigstore.corp.example behind the signing ALB.
+apiVersion: k8s.keycloak.org/v2beta1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  instances: 3
+  image: 222222222222.dkr.ecr.me-central-1.amazonaws.com/mirror/quay.io/keycloak/keycloak:26.8.1
+  startOptimized: false
+  db:
+    vendor: postgres
+    host: sigstore-prod-postgresql.cluster-REPLACE.me-central-1.rds.amazonaws.com
+    port: 5432
+    database: keycloak
+    usernameSecret: { name: keycloak-db, key: username }
+    passwordSecret: { name: keycloak-db, key: password }
+    poolMaxSize: 50
+  http:
+    # Pod certificate for id.sigstore.corp.example from cert-manager
+    # (AWSPCAClusterIssuer, certificate.yaml); the ALB re-encrypts to it.
+    tlsSecret: keycloak-tls
+  hostname:
+    hostname: https://id.sigstore.corp.example
+    strict: true
+  proxy:
+    headers: xforwarded
+  ingress:
+    enabled: false            # ingress.yaml (ALB, backend-protocol HTTPS)
+  truststores:
+    corporate-root:           # AD FS over Direct Connect is signed by the corporate PKI
+      secret:
+        name: corporate-root-ca
+  additionalOptions:
+    # PostgreSQL JDBC: verify the Aurora certificate against the RDS CA bundle.
+    - name: db-url-properties
+      value: "?sslmode=verify-full&sslrootcert=/opt/keycloak/conf/rds/bundle.pem"
+    - name: metrics-enabled
+      value: "true"
+    - name: health-enabled
+      value: "true"
+    - name: log-console-output
+      value: json
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { memory: 2Gi }
+  scheduling:
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: keycloak
+  unsupported:
+    podTemplate:
+      spec:
+        containers:
+          - volumeMounts:
+              - name: rds-ca
+                mountPath: /opt/keycloak/conf/rds
+                readOnly: true
+        volumes:
+          - name: rds-ca
+            configMap:
+              name: rds-ca-bundle
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-tls
+  namespace: keycloak
+spec:
+  secretName: keycloak-tls
+  dnsNames: [id.sigstore.corp.example]
+  duration: 2160h       # 90 days
+  renewBefore: 720h
+  privateKey: { algorithm: ECDSA, size: 256, rotationPolicy: Always }
+  issuerRef:
+    group: awspca.cert-manager.io
+    kind: AWSPCAClusterIssuer
+    name: sigstore-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: sigstore-signing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+    alb.ingress.kubernetes.io/healthcheck-port: "9000"
+    alb.ingress.kubernetes.io/healthcheck-path: /health/ready
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-central-1:222222222222:certificate/REPLACE
+    alb.ingress.kubernetes.io/security-groups: sg-REPLACE-signing
+spec:
+  ingressClassName: alb
+  rules:
+    - host: id.sigstore.corp.example
+      http:
+        paths:
+          # Realms and resources only; /admin is not routed (admins use
+          # kubectl port-forward from the platform bastion).
+          - path: /realms/
+            pathType: Prefix
+            backend: { service: { name: keycloak-service, port: { number: 8443 } } }
+          - path: /resources/
+            pathType: Prefix
+            backend: { service: { name: keycloak-service, port: { number: 8443 } } }

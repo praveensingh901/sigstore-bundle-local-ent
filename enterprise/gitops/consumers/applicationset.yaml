@@ -1,0 +1,73 @@
+# One Kyverno install + policy pack per consumer cluster, from the central
+# Argo CD (or each platform's own Argo CD / OpenShift GitOps). Clusters are
+# registered with label sigstore.example-bank.com/platform = eks|aks|openshift|onprem.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: sigstore-consumers
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: sigstore.example-bank.com/platform
+              operator: In
+              values: [eks, aks, openshift, onprem]
+  template:
+    metadata:
+      name: 'kyverno-{{.name}}'
+    spec:
+      project: sigstore-consumers
+      destination:
+        server: '{{.server}}'
+        namespace: kyverno
+      sources:
+        - repoURL: 222222222222.dkr.ecr.me-central-1.amazonaws.com/charts
+          chart: kyverno
+          targetRevision: 3.9.2
+          helm:
+            releaseName: kyverno
+            valueFiles:
+              - $values/enterprise/helm/values/common/kyverno.yaml
+              - '$values/enterprise/consumers/{{index .metadata.labels "sigstore.example-bank.com/platform"}}/kyverno-values.yaml'
+        - repoURL: https://github.com/example-bank/sigstore-platform.git
+          targetRevision: main
+          ref: values
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: sigstore-consumer-policies
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: sigstore.example-bank.com/platform
+              operator: In
+              values: [eks, aks, openshift, onprem]
+  template:
+    metadata:
+      name: 'sigstore-policies-{{.name}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: sigstore-consumers
+      destination:
+        server: '{{.server}}'
+      source:
+        repoURL: https://github.com/example-bank/sigstore-platform.git
+        targetRevision: main
+        path: 'enterprise/consumers/{{index .metadata.labels "sigstore.example-bank.com/platform"}}'
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }
+        syncOptions: [ServerSideApply=true]

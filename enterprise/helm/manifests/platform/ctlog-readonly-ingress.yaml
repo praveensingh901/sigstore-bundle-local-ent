@@ -1,0 +1,28 @@
+# Read-only CT log routes for monitors and auditors on the signing ALB.
+# add-chain / add-pre-chain are not routed, so only in-cluster Fulcio can write.
+# Paths follow RFC 6962 under the log prefix "sigstore".
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ctlog-readonly
+  namespace: ctlog-system
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: sigstore-signing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-central-1:222222222222:certificate/REPLACE
+    alb.ingress.kubernetes.io/security-groups: sg-REPLACE-signing
+spec:
+  ingressClassName: alb
+  rules:
+    - host: ctlog.sigstore.corp.example
+      http:
+        paths:
+          - { path: /sigstore/ct/v1/get-sth, pathType: Exact, backend: { service: { name: ctlog, port: { number: 80 } } } }
+          - { path: /sigstore/ct/v1/get-sth-consistency, pathType: Exact, backend: { service: { name: ctlog, port: { number: 80 } } } }
+          - { path: /sigstore/ct/v1/get-proof-by-hash, pathType: Exact, backend: { service: { name: ctlog, port: { number: 80 } } } }
+          - { path: /sigstore/ct/v1/get-entries, pathType: Exact, backend: { service: { name: ctlog, port: { number: 80 } } } }
+          - { path: /sigstore/ct/v1/get-roots, pathType: Exact, backend: { service: { name: ctlog, port: { number: 80 } } } }

@@ -1,0 +1,9 @@
+flowchart TB
+  ROOT["Offline corporate root CA<br/>(air-gapped, custodians)"]
+  ROOT --> SCA["Sigstore Code-Signing CA<br/>KMS P-384 · pathlen 0 · EKU codeSigning"]
+  ROOT --> TSA["Timestamp Authority cert<br/>KMS P-384 · EKU timeStamping (critical)"]
+  ROOT --> PCA["TLS subordinate (AWS Private CA)<br/>name-constrained .sigstore.corp.example"]
+  ROOT --> ADCS["AD CS issuing CAs<br/>(unchanged, Windows/TLS)"]
+  SCA --> LEAF["10-minute signer certificates (Fulcio)"]
+  PCA --> TLS["ALB + pod TLS (ACM, cert-manager)"]
+  TUFR["TUF root: 2-of-3 hardware tokens"] --> TR["trusted_root.json to every cluster"]

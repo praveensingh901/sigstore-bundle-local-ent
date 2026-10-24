@@ -1,0 +1,31 @@
+# Certificate profiles for signing the Sigstore CSRs at the offline root,
+# when the root is OpenSSL-based (or as the reference for configuring EJBCA,
+# AD CS or another CA). Use with:
+#   openssl x509 -req -in <csr> -CA root.crt -CAkey <key> -sha384 -days <n> \
+#     -extfile openssl-profiles.cnf -extensions <section> -out <crt>
+# The issued certificate is then checked by verify-issued-cert.sh.
+
+[ sigstore_ca ]
+# Fulcio issuing CA. Fulcio rejects an issuing CA in a chain without codeSigning.
+basicConstraints       = critical, CA:TRUE, pathlen:0
+keyUsage               = critical, keyCertSign, cRLSign
+extendedKeyUsage       = codeSigning
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+
+[ sigstore_tsa ]
+# RFC 3161 §2.3: exactly one EKU, timeStamping, marked critical.
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = critical, timeStamping
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+
+[ tls_subordinate ]
+# AWS Private CA subordinate for the platform's TLS certificates.
+# Name constraint keeps it from issuing outside the Sigstore zone.
+basicConstraints       = critical, CA:TRUE, pathlen:0
+keyUsage               = critical, keyCertSign, cRLSign, digitalSignature
+nameConstraints        = critical, permitted;DNS:.sigstore.corp.example
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always

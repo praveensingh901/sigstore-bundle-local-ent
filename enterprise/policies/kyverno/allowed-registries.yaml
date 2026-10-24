@@ -1,0 +1,44 @@
+# Every container image must come from an approved registry. Without this,
+# an image from a registry not listed in matchImageReferences would skip the
+# signature policies entirely.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: allowed-registries
+  annotations:
+    policies.kyverno.io/title: Images only from approved registries
+    policies.kyverno.io/severity: high
+spec:
+  validationActions: [Audit]          # Deny from rollout phase 4 (09-rollout-plan.md)
+  failurePolicy: Fail
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE", "UPDATE"]
+    namespaceSelector:
+      matchExpressions:
+        - key: sigstore.example-bank.com/enforce
+          operator: NotIn
+          values: ["off"]
+  variables:
+    - name: allImages
+      expression: >-
+        object.spec.containers.map(c, c.image) +
+        object.spec.?initContainers.orValue([]).map(c, c.image) +
+        object.spec.?ephemeralContainers.orValue([]).map(c, c.image)
+    - name: approved
+      # Platform overlays replace this list (consumers/<platform>/kustomization.yaml).
+      expression: >-
+        ['333333333333.dkr.ecr.me-central-1.amazonaws.com/',
+         'examplebank.azurecr.io/',
+         'harbor.corp.example/']
+  validations:
+    - expression: variables.allImages.all(i, variables.approved.exists(p, i.startsWith(p)))
+      messageExpression: >-
+        'images must come from an approved registry (' + variables.approved.join(', ') + '); got: ' +
+        variables.allImages.filter(i, !variables.approved.exists(p, i.startsWith(p))).join(', ')

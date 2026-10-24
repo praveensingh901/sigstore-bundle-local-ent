@@ -1,0 +1,6 @@
+clusterName: sigstore-prod
+region: me-central-1
+vpcId: vpc-REPLACE                          # terraform output vpc_id
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-prod-lbc

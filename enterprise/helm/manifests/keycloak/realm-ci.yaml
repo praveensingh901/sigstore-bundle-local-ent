@@ -1,0 +1,88 @@
+# Realm "ci": machine identities for CI systems that are not GitHub Actions
+# (06-ci-github.md §5). One confidential client per system; its service-account
+# user carries a verified e-mail that Fulcio puts in the certificate SAN.
+# The same pattern is exercised end to end by the laptop kit (client sigstore-ci,
+# identity ci@sigstore.local, test/compose/run.sh).
+apiVersion: k8s.keycloak.org/v2beta1
+kind: KeycloakRealmImport
+metadata:
+  name: ci
+  namespace: keycloak
+spec:
+  keycloakCRName: keycloak
+  placeholders:
+    JENKINS_PROD_SECRET:
+      secret:
+        name: keycloak-ci-clients
+        key: jenkins-prod
+    PLATFORM_RELEASE_SECRET:
+      secret:
+        name: keycloak-ci-clients
+        key: platform-release
+  realm:
+    realm: ci
+    enabled: true
+    displayName: Example Bank CI signing identities
+    sslRequired: all
+    registrationAllowed: false
+    accessTokenLifespan: 300
+    clients:
+    - clientId: jenkins-prod
+      name: Legacy Jenkins controller (prod)
+      protocol: openid-connect
+      publicClient: false
+      secret: ${JENKINS_PROD_SECRET}
+      clientAuthenticatorType: client-secret
+      standardFlowEnabled: false
+      directAccessGrantsEnabled: false
+      serviceAccountsEnabled: true
+      attributes:
+        access.token.lifespan: '300'
+        client_credentials.use_refresh_token: 'false'
+      defaultClientScopes:
+      - basic
+      - profile
+      - email
+      protocolMappers:
+      - name: aud-sigstore
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config:
+          included.client.audience: sigstore
+          id.token.claim: 'true'
+          access.token.claim: 'true'
+    - clientId: platform-release
+      name: Platform release automation (also signs legacy .sig for OpenShift)
+      protocol: openid-connect
+      publicClient: false
+      secret: ${PLATFORM_RELEASE_SECRET}
+      clientAuthenticatorType: client-secret
+      standardFlowEnabled: false
+      directAccessGrantsEnabled: false
+      serviceAccountsEnabled: true
+      attributes:
+        access.token.lifespan: '300'
+        client_credentials.use_refresh_token: 'false'
+      defaultClientScopes:
+      - basic
+      - profile
+      - email
+      protocolMappers:
+      - name: aud-sigstore
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config:
+          included.client.audience: sigstore
+          id.token.claim: 'true'
+          access.token.claim: 'true'
+    users:
+    - username: service-account-jenkins-prod
+      email: jenkins-prod@ci.example-bank.com
+      emailVerified: true
+      enabled: true
+      serviceAccountClientId: jenkins-prod
+    - username: service-account-platform-release
+      email: platform-release@ci.example-bank.com
+      emailVerified: true
+      enabled: true
+      serviceAccountClientId: platform-release

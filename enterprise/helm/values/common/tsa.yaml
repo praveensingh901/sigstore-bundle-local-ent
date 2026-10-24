@@ -1,0 +1,49 @@
+# Timestamp Authority — chart sigstore/tsa 2.1.5 (timestamp-server v2.1.4)
+forceNamespace: tsa-system
+namespace:
+  name: tsa-system
+  create: false
+
+server:
+  fullnameOverride: tsa-server
+  replicaCount: 2
+  logging:
+    production: true
+  # The TSA key is ECC_NIST_P384, whose only KMS algorithm is ECDSA_SHA_384:
+  # the response digest must be SHA-384 or KMS rejects every Sign call
+  # (the server default is sha256).
+  additionalArgs:
+    - --timestamp-signer-hash=sha384
+  args:
+    signer: kms
+    # kms_key_resource and cert_chain: per environment
+  serviceAccount:
+    create: true
+    name: tsa-server
+    mountToken: false
+  nodeSelector:
+    sigstore.example-bank.com/pool: signing
+  tolerations:
+    - key: sigstore.example-bank.com/signing
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65533
+  ingress:
+    http:
+      enabled: true
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/scheme: internal
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/group.name: sigstore-signing
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+        alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+        alb.ingress.kubernetes.io/healthcheck-path: /ping
+        alb.ingress.kubernetes.io/healthcheck-port: "5555"
+      hosts:
+        - host: tsa.sigstore.corp.example
+          path: /
+      tls: []

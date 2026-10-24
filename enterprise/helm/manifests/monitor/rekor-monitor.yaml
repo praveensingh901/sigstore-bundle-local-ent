@@ -1,0 +1,81 @@
+# rekor-monitor: verifies every new Rekor checkpoint is consistent with the
+# last one it saw (append-only proof) and exports Prometheus metrics (:9464).
+# No published image exists upstream; build it from the pinned commit with
+# enterprise/images/rekor-monitor/Dockerfile and push to the platform ECR.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tuf-root
+  namespace: sigstore-monitor
+data:
+  # enterprise/tuf/repo/1.root.json (initial trusted root of the private TUF repository)
+  root.json: |
+    {"REPLACE": "with 1.root.json from the TUF ceremony"}
+  # The TUF mirror is served with a certificate from the corporate PKI.
+  corporate-root.pem: |
+    -----BEGIN CERTIFICATE-----
+    REPLACE-WITH-enterprise/pki/root.crt
+    -----END CERTIFICATE-----
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rekor-monitor-state
+  namespace: sigstore-monitor
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rekor-monitor
+  namespace: sigstore-monitor
+  labels: { app: rekor-monitor }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }         # single writer of the checkpoint file
+  selector:
+    matchLabels: { app: rekor-monitor }
+  template:
+    metadata:
+      labels: { app: rekor-monitor }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9464"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: rekor-monitor
+          image: 222222222222.dkr.ecr.me-central-1.amazonaws.com/sigstore/rekor-monitor:47017b2379cb
+          args:
+            - --url=http://rekor-server.rekor-system.svc
+            - --file=/var/lib/rekor-monitor/logInfo.txt
+            - --once=false
+            - --interval=10m
+            - --tuf-repository=https://tuf.sigstore.corp.example
+            - --tuf-root-path=/etc/tuf/root.json
+          env:
+            - name: SSL_CERT_FILE              # Go: trust only the corporate root
+              value: /etc/tuf/corporate-root.pem
+            - name: HOME                       # TUF cache ($HOME/.sigstore) on the writable volume
+              value: /tmp
+          ports: [{ containerPort: 9464, name: metrics }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources: { requests: { cpu: 20m, memory: 64Mi }, limits: { memory: 256Mi } }
+          volumeMounts:
+            - { name: state, mountPath: /var/lib/rekor-monitor }
+            - { name: tuf-root, mountPath: /etc/tuf, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: state, persistentVolumeClaim: { claimName: rekor-monitor-state } }
+        - { name: tuf-root, configMap: { name: tuf-root } }
+        - { name: tmp, emptyDir: {} }

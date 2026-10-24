@@ -1,0 +1,13 @@
+# Timestamp Authority — DR
+server:
+  replicaCount: 0
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-dr-tsa
+  args:
+    kms_key_resource: awskms:///arn:aws:kms:me-south-1:111111111111:alias/sigstore/tsa
+  ingress:
+    http:
+      annotations:
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-south-1:222222222222:certificate/REPLACE
+        alb.ingress.kubernetes.io/security-groups: sg-REPLACE-dr-signing

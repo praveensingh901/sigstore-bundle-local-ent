@@ -1,0 +1,15 @@
+# Fulcio — DR (me-south-1). Inherits prod/fulcio.yaml; only Region-bound values change.
+# Argo CD valueFiles: common/fulcio.yaml, prod/fulcio.yaml, dr/fulcio.yaml
+server:
+  replicaCount: 0       # warm standby; set to 3 in the failover PR (08 §5)
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-dr-fulcio
+  args:
+    # Multi-Region replica key: same key material and public key, so the chain is unchanged.
+    kms_resource: awskms:///arn:aws:kms:me-south-1:111111111111:alias/sigstore/fulcio-ca
+  ingress:
+    http:
+      annotations:
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-south-1:222222222222:certificate/REPLACE
+        alb.ingress.kubernetes.io/security-groups: sg-REPLACE-dr-signing

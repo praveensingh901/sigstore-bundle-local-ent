@@ -1,0 +1,59 @@
+# EKS: ECR through IRSA / EKS Pod Identity on the Kyverno admission controller service account.
+# Render: kustomize build enterprise/consumers/eks
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../policies/kyverno
+patches:
+  - target:
+      kind: ImageValidatingPolicy
+      name: baseline-signed-by-central-workflow
+    patch: |-
+      - op: replace
+        path: /spec/attestors/0/cosign/tuf/mirror
+        value: https://tuf.sigstore.corp.example
+      - op: replace
+        path: /spec/matchImageReferences
+        value:
+          - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/*"
+      - op: replace
+        path: /spec/credentials
+        value:
+          providers: [amazon]
+  - target:
+      kind: ImageValidatingPolicy
+      name: third-party-imported-only
+    patch: |-
+      - op: replace
+        path: /spec/attestors/0/cosign/tuf/mirror
+        value: https://tuf.sigstore.corp.example
+      - op: replace
+        path: /spec/matchImageReferences
+        value:
+          - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/vendor/*"
+      - op: replace
+        path: /spec/credentials
+        value:
+          providers: [amazon]
+  - target:
+      kind: ImageValidatingPolicy
+      name: staff-signed-optin
+    patch: |-
+      - op: replace
+        path: /spec/attestors/0/cosign/tuf/mirror
+        value: https://tuf.sigstore.corp.example
+      - op: replace
+        path: /spec/matchImageReferences
+        value:
+          - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/*"
+      - op: replace
+        path: /spec/credentials
+        value:
+          providers: [amazon]
+  - target:
+      kind: ValidatingPolicy
+      name: allowed-registries
+    patch: |-
+      - op: replace
+        path: /spec/variables/1/expression
+        value: "['333333333333.dkr.ecr.me-central-1.amazonaws.com/']"

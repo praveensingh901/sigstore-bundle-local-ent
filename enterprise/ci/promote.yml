@@ -1,0 +1,54 @@
+# Deployed as example-bank/platform-workflows/.github/workflows/promote.yml
+# Copies an image WITH its signature bundles (OCI referrers) to another
+# registry, then verifies at the destination (05 §2, 06 §4).
+# cosign copy is not used: it copies only legacy .sig/.att tags.
+name: promote
+on:
+  workflow_call:
+    inputs:
+      source:      { required: true, type: string, description: "registry/repo@sha256:... (ECR)" }
+      destination: { required: true, type: string, description: "registry/repo (ACR or Harbor), no tag" }
+      tag:         { required: false, type: string, default: "" }
+    secrets:
+      DEST_USERNAME: { required: true }
+      DEST_PASSWORD: { required: true }
+
+permissions: {}
+
+jobs:
+  promote:
+    runs-on: [self-hosted, sigstore-signing]
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::333333333333:role/gha-promote-read
+          aws-region: me-central-1
+      - name: Copy image and referrers
+        env:
+          SRC: ${{ inputs.source }}
+          DST: ${{ inputs.destination }}
+          TAG: ${{ inputs.tag }}
+          DEST_USERNAME: ${{ secrets.DEST_USERNAME }}
+          DEST_PASSWORD: ${{ secrets.DEST_PASSWORD }}
+        run: |
+          [[ "$SRC" =~ @sha256:[a-f0-9]{64}$ ]] || { echo "::error::source must be pinned by digest"; exit 1; }
+          aws ecr get-login-password | oras login "${SRC%%/*}" --username AWS --password-stdin
+          echo "$DEST_PASSWORD" | oras login "${DST%%/*}" --username "$DEST_USERNAME" --password-stdin
+          DIGEST="${SRC##*@}"
+          oras cp -r "$SRC" "$DST@$DIGEST"
+          [[ -n "$TAG" ]] && oras tag "$DST@$DIGEST" "$TAG"
+          echo "DST_REF=$DST@$DIGEST" >> "$GITHUB_ENV"
+      - name: Verify at the destination
+        run: |
+          cat /etc/ssl/certs/ca-certificates.crt /etc/sigstore/ca.crt > "$RUNNER_TEMP/ca.pem"
+          export SSL_CERT_FILE="$RUNNER_TEMP/ca.pem"
+          cosign initialize --mirror https://tuf.sigstore.corp.example --root /etc/sigstore/tuf-root.json
+          cosign verify \
+            --certificate-identity-regexp '^https://github\.com/example-bank/platform-workflows/\.github/workflows/(sign|import-third-party)\.yml@refs/heads/main$' \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com/example-bank" \
+            "$DST_REF" > /dev/null
+          echo "### Promoted \`$DST_REF\` (signatures verified)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph GH["GitHub Enterprise Cloud"]
+    WF["Reusable sign.yml<br/>OIDC iss …/example-bank"]
+  end
+  subgraph AWS["AWS · me-central-1 (DR me-south-1)"]
+    RUN["CI account<br/>ARC runners"]
+    PLAT["Sigstore account<br/>Fulcio · Rekor · CT log · TSA<br/>Keycloak · Trillian/Aurora"]
+    SEC["Security account<br/>KMS keys · Private CA"]
+    TUF["TUF mirror + S3"]
+  end
+  subgraph ID["Corporate identity"]
+    ENTRA["Entra ID"]
+    ADFS["AD FS"]
+  end
+  subgraph CON["Consumer clusters (Kyverno)"]
+    EKS["EKS"]
+    AKS["AKS"]
+    OCP["OpenShift"]
+    ONP["On-prem"]
+  end
+  ROOT["Offline corporate root CA"]
+  WF -->|jobs| RUN -->|sign| PLAT
+  PLAT -->|kms:Sign| SEC
+  PLAT -->|broker| ENTRA & ADFS
+  ROOT -.->|ceremony| SEC
+  PLAT -->|trusted_root.json| TUF
+  TUF -->|replicas| EKS & AKS & OCP & ONP

@@ -1,0 +1,54 @@
+# Vendor images: only the import workflow, which scans and re-signs vendor
+# images after review, may sign them. Applies to namespaces labelled
+# sigstore.example-bank.com/third-party: "true" and to the vendor/ path.
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: third-party-imported-only
+  annotations:
+    policies.kyverno.io/title: Vendor images re-signed by the import workflow
+    policies.kyverno.io/severity: high
+spec:
+  validationActions: [Audit]
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE", "UPDATE"]
+    namespaceSelector:
+      matchExpressions:
+        - key: sigstore.example-bank.com/enforce
+          operator: NotIn
+          values: ["off"]
+  matchImageReferences:
+    - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/vendor/*"
+    - glob: "examplebank.azurecr.io/vendor/*"
+    - glob: "harbor.corp.example/vendor/*"
+  credentials:
+    providers: [default]
+  attestors:
+    - name: importWorkflow
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com/example-bank
+              subject: https://github.com/example-bank/platform-workflows/.github/workflows/import-third-party.yml@refs/heads/main
+        tuf:
+          mirror: https://tuf.sigstore.corp.example
+          root:
+            data: REPLACE_WITH_BASE64_1_ROOT_JSON
+  validations:
+    - expression: >-
+        (images.?containers.orValue([]) + images.?initContainers.orValue([]) +
+         images.?ephemeralContainers.orValue([]))
+        .map(image, verifyImageSignatures(image, [attestors.importWorkflow])).all(e, e > 0)
+      message: >-
+        vendor/ images must be imported (scanned and re-signed) by
+        platform-workflows/import-third-party.yml on main.

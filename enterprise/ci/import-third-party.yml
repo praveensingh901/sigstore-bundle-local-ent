@@ -1,0 +1,63 @@
+# Deployed as example-bank/platform-workflows/.github/workflows/import-third-party.yml
+# Brings a vendor image into the vendor/ repositories: pin by digest, scan,
+# require an approval (environment "vendor-import" with required reviewers),
+# copy, then sign as this workflow (third-party.yaml policy accepts only it).
+name: import-third-party
+on:
+  workflow_dispatch:
+    inputs:
+      source:  { required: true, type: string, description: "upstream image by digest, e.g. docker.io/bitnami/redis@sha256:..." }
+      name:    { required: true, type: string, description: "destination name under vendor/, e.g. redis" }
+      ticket:  { required: true, type: string, description: "change / risk-acceptance ticket" }
+
+permissions: {}
+
+env:
+  DEST: 333333333333.dkr.ecr.me-central-1.amazonaws.com/vendor
+
+jobs:
+  scan:
+    runs-on: [self-hosted, build]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Scan
+        env:
+          SRC: ${{ inputs.source }}
+        run: |
+          [[ "$SRC" =~ @sha256:[a-f0-9]{64}$ ]] || { echo "::error::source must be pinned by digest"; exit 1; }
+          trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed "$SRC"
+
+  import:
+    needs: scan
+    runs-on: [self-hosted, sigstore-signing]
+    environment: vendor-import          # required reviewers: platform security
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::333333333333:role/gha-vendor-import
+          aws-region: me-central-1
+      - name: Copy, sign, verify
+        env:
+          SRC: ${{ inputs.source }}
+          NAME: ${{ inputs.name }}
+          TICKET: ${{ inputs.ticket }}
+        run: |
+          [[ "$NAME" =~ ^[a-z0-9][a-z0-9._/-]*$ ]] || { echo "::error::invalid name"; exit 1; }
+          aws ecr get-login-password | crane auth login "${DEST%%/*}" --username AWS --password-stdin
+          DIGEST="${SRC##*@}"; REF="$DEST/$NAME@$DIGEST"
+          crane copy "$SRC" "$REF"                     # digest is preserved
+          cat /etc/ssl/certs/ca-certificates.crt /etc/sigstore/ca.crt > "$RUNNER_TEMP/ca.pem"
+          export SSL_CERT_FILE="$RUNNER_TEMP/ca.pem"
+          cosign initialize --mirror https://tuf.sigstore.corp.example --root /etc/sigstore/tuf-root.json
+          cosign sign --yes -a "ticket=$TICKET" -a "upstream=$SRC" "$REF"
+          cosign verify \
+            --certificate-identity "https://github.com/example-bank/platform-workflows/.github/workflows/import-third-party.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com/example-bank" \
+            "$REF" > /dev/null
+          echo "### Imported \`$REF\` (ticket $TICKET)" >> "$GITHUB_STEP_SUMMARY"

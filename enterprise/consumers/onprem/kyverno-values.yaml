@@ -1,0 +1,4 @@
+# Kyverno on on-prem Kubernetes (layered on helm/values/common/kyverno.yaml)
+global:
+  image:
+    registry: harbor.corp.example/mirror/reg.kyverno.io

@@ -1,0 +1,56 @@
+# Kyverno 1.19.2 (chart kyverno/kyverno 3.9.2) for EVERY consumer cluster:
+# EKS, AKS, OpenShift and on-prem (05-consumer-clusters.md §1).
+# Per-platform overlays live in enterprise/consumers/<platform>/kyverno.yaml.
+global:
+  image:
+    registry: null            # set per platform to the local mirror (ECR / ACR / Harbor / Quay)
+  # Corporate root: Kyverno must trust TLS of the TUF replica and private registries.
+  caCertificates:
+    data: |
+      -----BEGIN CERTIFICATE-----
+      REPLACE-WITH-enterprise/pki/root.crt
+      -----END CERTIFICATE-----
+
+config:
+  # Pods in these namespaces never reach the webhook. The chart default
+  # excludes only kube-system; platform overlays append their own system
+  # namespaces (openshift-*, calico-system, gatekeeper-system, ...).
+  webhooks:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [kube-system, kyverno]
+
+features:
+  policyReports:
+    enabled: true
+  admissionReports:
+    enabled: true
+
+admissionController:
+  replicas: 3                 # fail-closed webhook must stay available (PDB is automatic with >1)
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: admission-controller
+  container:
+    resources:
+      requests: { cpu: 500m, memory: 512Mi }
+      limits: { memory: 1Gi }
+  rbac:
+    serviceAccount:
+      annotations: {}         # EKS: IRSA role for ECR pulls; AKS: workload identity client ID
+
+backgroundController:
+  replicas: 2
+reportsController:
+  replicas: 2
+cleanupController:
+  replicas: 2

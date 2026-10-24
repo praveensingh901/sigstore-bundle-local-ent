@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Sigstore Academy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: fixed course rail on the left (stacks on top at phone width),
+   a reading column on the right. Palette continues the kit's navy + teal
+   + amber identity used in the Word reference and deck. */
+:root {
+  --bg: #f2f5f8;
+  --surface: #ffffff;
+  --surface-2: #e8eff4;
+  --fg: #13213a;
+  --muted: #566a80;
+  --line: #d3dde6;
+  --accent: #0f7c80;
+  --accent-ink: #0a5d60;
+  --accent-soft: #d6eeee;
+  --amber: #b5701a;
+  --amber-soft: #fbecd5;
+  --ok: #2b7a4b;
+  --ok-soft: #dff1e6;
+  --bad: #b23d37;
+  --bad-soft: #f8e0de;
+  --code-bg: #0f1d30;
+  --code-fg: #d7e4f2;
+  --code-dim: #8fa6bf;
+  --node: #ffffff;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-ui: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1420; --surface: #131f30; --surface-2: #1a2a40; --fg: #e4ecf5; --muted: #9aabbf;
+    --line: #2a3c55; --accent: #3db5ad; --accent-ink: #7fd6cf; --accent-soft: #143a3d;
+    --amber: #e3a54a; --amber-soft: #3a2b12; --ok: #5cc08b; --ok-soft: #173326; --bad: #e57c74; --bad-soft: #3d1d1b;
+    --code-bg: #08111c; --code-fg: #d7e4f2; --code-dim: #8094ab; --node: #182740; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1420; --surface: #131f30; --surface-2: #1a2a40; --fg: #e4ecf5; --muted: #9aabbf;
+  --line: #2a3c55; --accent: #3db5ad; --accent-ink: #7fd6cf; --accent-soft: #143a3d;
+  --amber: #e3a54a; --amber-soft: #3a2b12; --ok: #5cc08b; --ok-soft: #173326; --bad: #e57c74; --bad-soft: #3d1d1b;
+  --code-bg: #08111c; --code-fg: #d7e4f2; --code-dim: #8094ab; --node: #182740; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body); font-size: 17px; line-height: 1.6; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+h1, h2, h3, h4, .ui { font-family: var(--font-ui); }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+code, pre, kbd { font-family: var(--font-mono); }
+p code, li code, td code, .inline code { font-size: .86em; background: var(--surface-2); padding: .08em .35em; border-radius: 4px; }
+a { color: var(--accent-ink); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.app { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 100vh; }
+
+/* ---------- rail ---------- */
+.rail { background: var(--surface); border-right: 1px solid var(--line); padding: 22px 18px; position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: flex; gap: 10px; align-items: center; }
+.seal { width: 40px; height: 40px; flex: none; }
+.brand h1 { font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+.brand p { margin: 0; font-family: var(--font-ui); font-size: .78rem; color: var(--muted); }
+.overall { font-family: var(--font-ui); font-size: .82rem; color: var(--muted); display: grid; gap: 6px; }
+.bar { height: 7px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+.nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.nav button { width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 9px 10px; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; font-family: var(--font-ui); font-size: .9rem; }
+.nav button:hover { background: var(--surface-2); }
+.nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+.nav .num { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.nav .done .num { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.nav .kind { font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.rail-foot { margin-top: auto; font-family: var(--font-ui); font-size: .76rem; color: var(--muted); display: grid; gap: 8px; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--accent-ink); text-decoration: underline; font-size: .76rem; justify-self: start; }
+
+/* ---------- main ---------- */
+main { padding-block: 34px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); min-width: 0; }
+.wrap { max-width: 880px; margin: 0 auto; display: grid; gap: 30px; }
+.eyebrow { font-family: var(--font-ui); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--accent-ink); }
+.head h2 { font-size: clamp(1.7rem, 3.4vw, 2.35rem); font-weight: 800; letter-spacing: -.02em; margin-top: 6px; }
+.head p { color: var(--muted); max-width: 64ch; margin: 10px 0 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { font-family: var(--font-ui); font-size: .76rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.amber { background: var(--amber-soft); color: var(--amber); }
+section > h3 { font-size: 1.25rem; font-weight: 750; margin-bottom: 10px; }
+.prose { max-width: 66ch; }
+.prose p { margin: 0 0 .8em; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.note { border-left: 4px solid var(--amber); background: var(--amber-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: .95rem; }
+
+/* ---------- flow diagram ---------- */
+.flow { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.diagram { overflow-x: auto; }
+.diagram svg { width: 100%; min-width: 520px; height: auto; display: block; }
+.diagram .node rect { fill: var(--node); stroke: var(--line); stroke-width: 1.5; transition: all .25s; }
+.diagram .node text { fill: var(--muted); font-family: var(--font-ui); font-size: 13px; font-weight: 600; transition: fill .25s; }
+.diagram .node.on rect { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-soft); }
+.diagram .node.on text { fill: var(--accent-ink); }
+.diagram .edge { stroke: var(--line); stroke-width: 2; fill: none; transition: stroke .25s; }
+.diagram .edge.on { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 7 5; animation: dash 1s linear infinite; }
+.diagram .zone { fill: none; stroke: var(--line); stroke-dasharray: 3 4; }
+.diagram .zone-label { fill: var(--muted); font-family: var(--font-ui); font-size: 11px; letter-spacing: .08em; }
+@keyframes dash { to { stroke-dashoffset: -24; } }
+@media (prefers-reduced-motion: reduce) { .diagram .edge.on { animation: none; } .bar > i { transition: none; } }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.steps button { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 12px; font-family: var(--font-ui); font-size: .82rem; font-weight: 600; }
+.steps button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.stepcard h4 { font-size: 1.1rem; margin: 0 0 2px; }
+.stepcard .tool { font-family: var(--font-ui); font-size: .8rem; color: var(--accent-ink); font-weight: 700; margin-bottom: 8px; }
+.stepcard p { margin: 0 0 .7em; }
+.stepcard .detail { color: var(--muted); font-size: .94rem; }
+.stepnav { display: flex; gap: 8px; margin-top: 10px; }
+
+/* ---------- buttons ---------- */
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 8px; padding: 8px 16px; font-family: var(--font-ui); font-weight: 700; font-size: .9rem; }
+.btn.ghost { background: transparent; color: var(--accent-ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+/* ---------- tool explorer ---------- */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 5px 12px; font-family: var(--font-ui); font-size: .84rem; }
+.filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.search { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-family: var(--font-ui); font-size: .95rem; }
+.explorer { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.toollist { display: grid; gap: 4px; max-height: 560px; overflow-y: auto; padding-right: 4px; }
+.toollist button { text-align: left; border: 1px solid transparent; background: none; border-radius: 8px; padding: 8px 10px; display: grid; gap: 1px; font-family: var(--font-ui); }
+.toollist button:hover { background: var(--surface-2); }
+.toollist button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.toollist .tname { font-weight: 700; font-size: .92rem; }
+.toollist .tgroup { font-size: .74rem; color: var(--muted); }
+.tooldetail h4 { font-size: 1.35rem; font-weight: 800; margin: 0; }
+.tooldetail .ver { font-family: var(--font-mono); font-size: .8rem; color: var(--accent-ink); margin: 2px 0 12px; }
+.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px 14px; font-size: .95rem; }
+.kv dt { font-family: var(--font-ui); font-size: .76rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; padding-top: 3px; }
+.kv dd { margin: 0; min-width: 0; }
+.kv dd.breaks { color: var(--bad); }
+
+/* ---------- code ---------- */
+.code { position: relative; background: var(--code-bg); color: var(--code-fg); border-radius: 8px; font-size: .82rem; line-height: 1.55; }
+.code pre { margin: 0; padding: 14px 16px; overflow-x: auto; white-space: pre; }
+.code .copy { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.08); color: var(--code-fg); border: 1px solid rgba(255,255,255,.18); border-radius: 6px; padding: 2px 9px; font-family: var(--font-ui); font-size: .74rem; }
+.code .label { font-family: var(--font-ui); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--code-dim); padding: 10px 16px 0; }
+.code.expect { background: var(--surface-2); color: var(--fg); }
+.code.expect .label { color: var(--muted); }
+
+/* ---------- labs ---------- */
+.lab { display: grid; gap: 14px; }
+.labstep { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 10px; }
+.labstep.done { border-color: var(--ok); }
+.labstep header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.labstep .sn { font-family: var(--font-mono); font-weight: 700; font-size: .85rem; background: var(--surface-2); padding: 2px 8px; border-radius: 6px; }
+.labstep h4 { font-size: 1.05rem; margin: 0; flex: 1 1 200px; }
+.where { font-family: var(--font-ui); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 2px 8px; border-radius: 6px; }
+.where.online { background: var(--amber-soft); color: var(--amber); }
+.where.laptop { background: var(--accent-soft); color: var(--accent-ink); }
+.check { display: inline-flex; gap: 8px; align-items: center; font-family: var(--font-ui); font-size: .88rem; font-weight: 600; }
+.check input { width: 18px; height: 18px; accent-color: var(--ok); }
+.labstep .tip { font-size: .92rem; color: var(--muted); margin: 0; }
+
+/* ---------- PKI matcher ---------- */
+.trees { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tree h4 { font-family: var(--font-ui); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+.keycard { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; margin-bottom: 8px; }
+.keycard .kl { font-family: var(--font-ui); font-weight: 700; font-size: .9rem; }
+.keycard select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-family: var(--font-ui); font-size: .82rem; }
+.keycard.right { border-color: var(--ok); background: var(--ok-soft); }
+.keycard.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.keycard .ki { font-size: .84rem; color: var(--muted); }
+.indent { margin-left: 14px; border-left: 2px dashed var(--line); padding-left: 10px; }
+
+/* ---------- rekor explorer + policy anatomy ---------- */
+.anatomy { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.yaml { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 10px 0; font-family: var(--font-mono); font-size: .78rem; overflow-x: auto; }
+.yaml button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 1px 14px; white-space: pre; color: inherit; font-family: inherit; font-size: inherit; }
+.yaml button.has { cursor: pointer; }
+.yaml button.has:hover, .yaml button.sel { background: rgba(61, 181, 173, .22); }
+.yaml button:not(.has) { cursor: default; color: var(--code-dim); }
+.explain { position: sticky; top: 16px; }
+.explain h4 { font-family: var(--font-mono); font-size: .86rem; margin: 0 0 8px; color: var(--accent-ink); word-break: break-all; }
+
+/* ---------- simulator ---------- */
+.sim { display: grid; gap: 14px; }
+.simform { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; gap: 4px; font-family: var(--font-ui); font-size: .82rem; font-weight: 600; color: var(--muted); min-width: 0; }
+.field input, .field select { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-family: var(--font-mono); font-size: .8rem; }
+.field.wide { grid-column: 1 / -1; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 12px; font-family: var(--font-ui); font-size: .84rem; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.results { display: grid; gap: 8px; }
+.result { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.verdict { font-family: var(--font-ui); font-weight: 800; font-size: .78rem; text-align: center; border-radius: 6px; padding: 4px 0; letter-spacing: .05em; }
+.verdict.admit { background: var(--ok-soft); color: var(--ok); }
+.verdict.deny { background: var(--bad-soft); color: var(--bad); }
+.verdict.audit { background: var(--amber-soft); color: var(--amber); }
+.result .rl { font-family: var(--font-ui); font-weight: 700; font-size: .9rem; }
+.result .rs { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); word-break: break-all; }
+.result .rr { font-size: .88rem; margin-top: 2px; }
+
+/* ---------- enterprise ---------- */
+.zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.zone { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 6px; align-content: start; }
+.zone h4 { font-family: var(--font-ui); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent-ink); margin: 0 0 4px; }
+.zone button { text-align: left; background: var(--surface-2); border: 1px solid transparent; border-radius: 6px; padding: 7px 10px; font-family: var(--font-ui); font-size: .86rem; font-weight: 600; }
+.zone button[aria-expanded="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.zone .zd { font-size: .9rem; color: var(--fg); padding: 2px 4px 6px; }
+.trace { counter-reset: t; list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.trace li { counter-increment: t; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; align-items: start; opacity: .38; transition: opacity .3s; }
+.trace li.on { opacity: 1; }
+.trace li::before { content: counter(t); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-ui); font-weight: 800; font-size: .8rem; background: var(--surface-2); color: var(--muted); }
+.trace li.on::before { background: var(--accent); color: var(--surface); }
+
+/* ---------- quiz ---------- */
+.quiz { display: grid; gap: 14px; }
+.quiz .score { font-family: var(--font-ui); font-weight: 700; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+.q legend { font-family: var(--font-ui); font-weight: 700; font-size: 1rem; padding: 0; margin-bottom: 10px; }
+.q fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 6px; cursor: pointer; font-size: .95rem; }
+.opt input { margin-top: 5px; accent-color: var(--accent); }
+.opt.correct { border-color: var(--ok); background: var(--ok-soft); }
+.opt.incorrect { border-color: var(--bad); background: var(--bad-soft); }
+.why { font-size: .92rem; margin-top: 6px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); }
+.why b { font-family: var(--font-ui); }
+.drill .symptom { font-family: var(--font-mono); font-size: .86rem; background: var(--code-bg); color: var(--code-fg); padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
+
+.pager { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 18px; }
+.welcome { display: grid; gap: 14px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.mcard { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 4px; font-family: var(--font-ui); }
+.mcard:hover { border-color: var(--accent); }
+.mcard .mn { font-size: .74rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.mcard .mt { font-weight: 800; font-size: 1rem; }
+.mcard .ms { font-family: var(--font-body); font-size: .88rem; color: var(--muted); }
+.mcard .mst { font-size: .76rem; font-weight: 700; color: var(--ok); }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 16px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)); }
+  .nav { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; padding-bottom: 4px; }
+  .nav button { grid-template-columns: 26px auto; }
+  .nav .kind { display: none; }
+  .rail-foot { display: none; }
+  .flow, .explorer, .anatomy { grid-template-columns: 1fr; }
+  .trees { grid-template-columns: 1fr; }
+  .explain { position: static; }
+}
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .simform { grid-template-columns: 1fr; }
+  .kv { grid-template-columns: 1fr; gap: 2px; }
+  .kv dd { margin-bottom: 8px; }
+  .result { grid-template-columns: 1fr; }
+}
+
+/* Grid and flex children that hold code, tables or long identifiers must be
+   allowed to shrink; their own containers scroll instead of the page. */
+.wrap > *, .lab > *, .labstep > *, .panel > *, .flow > *, .explorer > *, .anatomy > *,
+.quiz > *, .q, .tooldetail, .sim > *, .results > *, .zones > * { min-width: 0; }
+@media (max-width: 900px) {
+  .flow, .explorer, .anatomy, .trees { grid-template-columns: minmax(0, 1fr); }
+}
+p code, li code, td code, .stepcard, .prose, .zd, .trace span, .rr, .why, .tip, .kv dd, .explain p, .opt span, .q legend { overflow-wrap: anywhere; min-width: 0; }
+/* Diagram full width above the step card; programmatic focus on headings
+   (for screen readers after navigation) without a visual ring. */
+.flow { grid-template-columns: minmax(0, 1fr); }
+.diagram svg { max-width: 760px; margin: 0 auto; }
+h2[tabindex="-1"]:focus { outline: none; }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const TOOLS_DATA = {"title": "Sigstore Offline Kit — Tools & Components Reference", "subtitle": "What every tool is, why the kit uses it, and where it appears", "categories": [{"id": "workstation", "name": "Workstation tools", "short": "Run on your laptop", "intro": "Command-line tools you run on the laptop (Linux or WSL2). All except the OS basics are downloaded once by 01-build-offline-bundle.sh into bundle/bin, so nothing is installed from the internet on the offline machine.", "tools": [{"name": "Docker (Engine / Desktop)", "version": "24+ / Desktop 4.30+", "what": "Container runtime that runs Linux containers on your machine.", "why": "Everything runs in containers: the kind Kubernetes node, the offline image mirror, and the TUF repository builder. Docker Desktop provides this on Windows via WSL2.", "where": "02, 04, 10, 12, test/compose", "offline": "Installed beforehand (prerequisite).", "cmd": "docker ps   |   docker load -i bundle/images/host-images.tar"}, {"name": "WSL2 (Windows only)", "version": "Ubuntu 22.04/24.04", "what": "Windows Subsystem for Linux — a real Linux kernel inside Windows.", "why": "All kit scripts are bash. WSL2 gives Windows users the same shell, tools and paths as Linux users, and Docker Desktop integrates with it.", "where": "All scripts on Windows", "offline": "Installed beforehand (prerequisite).", "cmd": "wsl --shutdown   (after editing the hosts file)"}, {"name": "kind", "version": "v0.33.0", "what": "Kubernetes IN Docker — runs a full Kubernetes cluster as Docker containers.", "why": "Gives a real, disposable Kubernetes v1.37 cluster on a laptop, using the same Helm charts as production. Its containerd honours /etc/containerd/certs.d, which is how the cluster pulls images from the offline mirror.", "where": "04-create-cluster.sh, 99-teardown.sh", "offline": "Binary in bundle/bin; node image kindest/node:v1.37.0 in host-images.tar.", "cmd": "kind create cluster --config .generated/kind-config.yaml"}, {"name": "kubectl", "version": "v1.37.0", "what": "The Kubernetes command-line client.", "why": "Creates namespaces and Secrets (keys, TLS), applies manifests, waits for rollouts, reads logs and runs admission dry-runs.", "where": "04–08, 12, 13, verify-stack, backup/restore", "offline": "Binary in bundle/bin.", "cmd": "kubectl --context kind-sigstore get pods -A"}, {"name": "Helm", "version": "v3.16.2", "what": "Package manager for Kubernetes; installs versioned charts with a values file.", "why": "Installs Traefik, Trillian, Rekor, Fulcio, the CT log and Kyverno from the official charts, pinned to tested versions, using the kit's values files.", "where": "05, 08, 13; 01 (helm pull, helm template)", "offline": "Binary in bundle/bin; charts as .tgz in bundle/charts.", "cmd": "helm upgrade --install fulcio bundle/charts/fulcio-2.11.4.tgz -f config/helm/fulcio-values.yaml"}, {"name": "crane", "version": "v0.22.1 (go-containerregistry)", "what": "Daemonless tool for working with container images and registries.", "why": "Builds the offline mirror (crane copy keeps multi-arch digests intact), resolves image digests before signing, pushes the demo image without needing Docker to trust the CA, and lists tags.", "where": "01, 10, 13; CI examples", "offline": "Binary in bundle/bin (+ crane.exe for Windows).", "cmd": "crane digest registry.sigstore.local/demo/hello:v1"}, {"name": "cosign", "version": "v3.1.3", "what": "Sigstore's signing and verification client.", "why": "Performs keyless signing (OIDC login → Fulcio certificate → Rekor entry), verifies signatures, attaches attestations, and generates the private trusted_root.json and signing_config.json.", "where": "09, 10, CI examples, windows/cosign-windows.ps1", "offline": "Binary in bundle/bin (+ cosign.exe for Windows).", "cmd": "cosign verify --trusted-root out/trusted_root.json --certificate-identity alice@sigstore.local ..."}, {"name": "gitsign", "version": "v0.18.0", "what": "Sigstore's keyless signer for git commits and tags; git calls it in place of GPG (gpg.format x509, gpg.x509.program gitsign).", "why": "Proves who wrote each commit with the same Keycloak login, private Fulcio CA and Rekor log as image signing, so there are no GPG or SSH signing keys to manage.", "where": "14-configure-gitsign.sh, export-trust.sh, test/compose/gitsign-test.sh, docs/13", "offline": "Binary in bundle/bin (+ gitsign.exe for Windows), checked against the release checksums.txt.", "cmd": "gitsign verify --certificate-identity alice@sigstore.local --certificate-oidc-issuer https://keycloak.sigstore.local/realms/sigstore HEAD"}, {"name": "jq", "version": "1.7.1", "what": "Command-line JSON processor.", "why": "Reads OIDC tokens, Rekor API responses, trusted roots and Kyverno output inside the scripts.", "where": "07, 09–13, verify-stack, get-token", "offline": "Static binary in bundle/bin.", "cmd": "jq .treeSize  (Rekor log size)"}, {"name": "OpenSSL", "version": "3.x (OS package)", "what": "Cryptography toolkit.", "why": "Generates every key and certificate locally: TLS root and wildcard cert, Fulcio root + intermediate CA, Rekor and CT log signing keys. Also verifies chains and compares key fingerprints.", "where": "03-generate-pki.sh, 08, verify-stack, backup.sh (AES encryption)", "offline": "Ships with Linux / WSL.", "cmd": "openssl verify -CAfile pki/fulcio/root.crt pki/fulcio/intermediate.crt"}, {"name": "curl", "version": "OS package", "what": "HTTP client.", "why": "Health checks against Keycloak, Fulcio, Rekor, registry and TUF over TLS, and fetching OIDC tokens for non-interactive signing.", "where": "Most scripts, get-token.sh", "offline": "Ships with Linux / WSL.", "cmd": "curl --cacert pki/tls/ca.crt https://rekor.sigstore.local/api/v1/log"}, {"name": "bash, perl, coreutils", "version": "OS packages", "what": "Shell and standard Unix utilities (tar, sha256sum, base64, sed, awk).", "why": "bash runs the scripts; perl renders the .tpl templates; sha256sum verifies the bundle; tar/base64 package the TUF repo and backups.", "where": "All scripts (lib.sh render())", "offline": "Ship with Linux / WSL.", "cmd": "sha256sum -c bundle/SHA256SUMS"}, {"name": "PowerShell", "version": "5.1+ (Windows)", "what": "Windows shell.", "why": "Edits the Windows hosts file and imports the TLS root into the Windows certificate store, so browsers, Docker Desktop and cosign.exe trust *.sigstore.local.", "where": "windows/Setup-Hosts.ps1, windows/cosign-windows.ps1", "offline": "Built into Windows.", "cmd": ".\\windows\\Setup-Hosts.ps1  (Administrator)"}]}, {"id": "platform", "name": "Cluster platform", "short": "Plumbing inside Kubernetes", "intro": "Infrastructure the Sigstore services need: networking, DNS, storage, ingress and the image supply. None of it is Sigstore-specific, but each piece solves a concrete offline problem.", "tools": [{"name": "containerd (in the kind node)", "version": "bundled in kindest/node", "what": "The container runtime Kubernetes uses to pull and run images.", "why": "Configured through hosts.toml files to fetch docker.io, ghcr.io, quay.io, gcr.io, registry.k8s.io and reg.kyverno.io images from the local mirror, and to trust the private registry's TLS certificate.", "where": "04-create-cluster.sh (.generated/containerd/certs.d)", "offline": "Part of the node image.", "cmd": "docker exec sigstore-control-plane crictl pull ghcr.io/sigstore/fulcio:v1.9.0"}, {"name": "Offline image mirror (registry:2)", "version": "2.8.3", "what": "A registry container on 127.0.0.1:5000 serving bundle/mirror.", "why": "Replaces the internet for image pulls. Every platform image is stored as <registry>/<repo> with its original digest, so the Helm charts' digest-pinned references work unchanged.", "where": "01 (populate), 02 (start), 04 (attach to kind network)", "offline": "Image in host-images.tar; data in bundle/mirror (≈4.2 GB).", "cmd": "curl http://127.0.0.1:5000/v2/_catalog"}, {"name": "Traefik", "version": "v3.7.14 (chart 42.0.0)", "what": "Kubernetes ingress controller and reverse proxy.", "why": "Single TLS front door for keycloak, fulcio, rekor, registry and tuf .sigstore.local. Pinned to ClusterIP 10.96.100.100 so pods and the node resolve the same names to it. Chosen because ingress-nginx was retired in March 2026.", "where": "05-deploy-ingress.sh, config/helm/traefik-values.yaml", "offline": "Image mirrored; chart in bundle/charts.", "cmd": "kubectl -n traefik logs deploy/traefik"}, {"name": "CoreDNS", "version": "bundled with Kubernetes", "what": "The cluster's DNS server.", "why": "An extra sigstore.local zone answers every *.sigstore.local name with Traefik's IP, so Fulcio can reach Keycloak and Kyverno can reach the registry/TUF through the same TLS endpoints as the laptop.", "where": "05-deploy-ingress.sh, config/coredns/", "offline": "Part of the node image.", "cmd": "kubectl run dnscheck --rm -it --image=busybox -- nslookup keycloak.sigstore.local"}, {"name": "local-path-provisioner", "version": "bundled with kind", "what": "Dynamic storage provisioner backed by node disk.", "why": "Creates the PersistentVolumes for MySQL (transparency logs), the registry, Keycloak and Rekor attestation storage.", "where": "All PVCs", "offline": "Part of the node image.", "cmd": "kubectl get pvc -A"}]}, {"id": "sigstore", "name": "Sigstore services", "short": "The signing infrastructure", "intro": "The core of the stack — private replacements for fulcio.sigstore.dev, rekor.sigstore.dev and the public CT log, all signing with keys you generated.", "tools": [{"name": "Fulcio", "version": "v1.9.0 (chart 2.11.4)", "what": "Sigstore's code-signing certificate authority.", "why": "Turns a verified OIDC identity into a 10-minute X.509 signing certificate, issued by your intermediate CA. Trusts Keycloak through the CACert field and submits every certificate to the CT log.", "where": "08-deploy-sigstore.sh, fulcio-values.yaml, fulcio-config-values.yaml.tpl", "offline": "Image mirrored; CA from pki/fulcio.", "cmd": "curl https://fulcio.sigstore.local/api/v2/configuration"}, {"name": "CT log (ct_server / ctfe)", "version": "scaffolding v0.7.33 (chart 0.2.69)", "what": "Certificate Transparency log front-end.", "why": "Records every certificate Fulcio issues and returns a Signed Certificate Timestamp (SCT) embedded in the cert, so mis-issued certificates are detectable. cosign verifies the SCT.", "where": "08, ctlog-values.yaml (in-cluster only)", "offline": "Image mirrored; key from pki/ctlog.", "cmd": "kubectl -n ctlog-system port-forward svc/ctlog 6962:80"}, {"name": "Rekor", "version": "v1.5.4 (chart 1.8.7)", "what": "Sigstore's transparency log for signatures and attestations.", "why": "Stores a tamper-evident record of every signature and returns an inclusion proof and signed timestamp, proving the signature was made while the short-lived certificate was valid. Uses your file-based signer key.", "where": "08, rekor-values.yaml, 11-inspect-rekor.sh", "offline": "Image mirrored; key from pki/rekor.", "cmd": "curl https://rekor.sigstore.local/api/v1/log"}, {"name": "Trillian (log server + log signer)", "version": "v1.8.0 (chart 0.4.0)", "what": "Google's verifiable append-only Merkle-tree log.", "why": "The storage engine under both Rekor and the CT log. The log server accepts entries and serves proofs; the log signer sequences them into the tree.", "where": "08, trillian-values.yaml", "offline": "Images mirrored.", "cmd": "kubectl -n trillian-system get pods"}, {"name": "MySQL (trillian db_server)", "version": "Trillian CI image", "what": "Relational database.", "why": "Persists Trillian's Merkle trees — the complete transparency history. The most important data to back up.", "where": "08, backup.sh (mysqldump), restore.sh", "offline": "Image mirrored.", "cmd": "mysqldump --databases trillian"}, {"name": "Redis", "version": "pinned digest", "what": "In-memory key/value store.", "why": "Rekor's search index (artifact hash → entry UUID). Rebuildable from the log, so not backed up.", "where": "rekor chart", "offline": "Image mirrored.", "cmd": "curl -d '{\"hash\":\"sha256:...\"}' .../api/v1/index/retrieve"}]}, {"id": "identity", "name": "Identity, trust & storage", "short": "Who signs, what to trust, where artifacts live", "intro": "The pieces that decide who may sign, how every client learns which keys to trust, and where signed images and their signatures are stored.", "tools": [{"name": "Keycloak", "version": "26.8.1", "what": "Open-source OpenID Connect identity provider.", "why": "Private replacement for Google/GitHub/Microsoft login. Issues the OIDC tokens Fulcio exchanges for certificates: browser, device-code and password flows for people (alice@sigstore.local), client_credentials for CI (ci@sigstore.local).", "where": "07-deploy-keycloak.sh, realm-sigstore.json.tpl, get-token.sh", "offline": "Image mirrored; realm imported from a Secret.", "cmd": "scripts/get-token.sh user"}, {"name": "Private OCI registry (registry:2)", "version": "2.8.3", "what": "CNCF Distribution container registry.", "why": "Stores your images and, next to them, the Sigstore signature and attestation bundles. Served at https://registry.sigstore.local behind Traefik TLS.", "where": "06-deploy-registry.sh, registry.yaml.tpl", "offline": "Image mirrored.", "cmd": "crane catalog registry.sigstore.local"}, {"name": "TUF repository (scaffolding server)", "version": "v0.7.39", "what": "The Update Framework — signed metadata for distributing trust files.", "why": "Distributes trusted_root.json and signing_config securely and supports rotation. Clients pin one root.json; Kyverno 1.19 requires a TUF source to verify keyless signatures offline.", "where": "12-publish-tuf.sh, config/tuf/tuf.yaml.tpl", "offline": "Builder image in host-images.tar; server image mirrored.", "cmd": "cosign initialize --mirror https://tuf.sigstore.local --root out/tuf/root.json"}, {"name": "Private PKI (generated)", "version": "OpenSSL profiles", "what": "Two separate certificate hierarchies plus log keys.", "why": "TLS root + wildcard cert protect transport; Fulcio root (offline) + intermediate (EKU codeSigning) anchor code signing; Rekor and CT keys sign log evidence. Separate hierarchies so one compromise doesn't imply the other.", "where": "03-generate-pki.sh, config/pki/extensions.cnf", "offline": "Generated locally.", "cmd": "openssl x509 -in pki/fulcio/intermediate.crt -noout -ext extendedKeyUsage"}]}, {"id": "policy", "name": "Policy enforcement", "short": "Stop unsigned images", "intro": "Admission controllers that check images before Kubernetes runs them.", "tools": [{"name": "Kyverno", "version": "v1.19.1 (chart 3.9.1)", "what": "Kubernetes-native policy engine.", "why": "Its ImageValidatingPolicy verifies every Pod image from registry.sigstore.local carries a keyless signature from your Fulcio/Rekor with an allowed identity, using trust from the private TUF mirror. Tested: signed admitted, unsigned denied.", "where": "13-deploy-policy.sh, kyverno-values.yaml, policies/kyverno/", "offline": "Images mirrored (reg.kyverno.io).", "cmd": "kubectl get imagevalidatingpolicy"}, {"name": "OPA Gatekeeper (optional)", "version": "v3.23.1", "what": "Policy engine using the Rego language.", "why": "Cannot verify cosign signatures itself; the kit uses it to require images from the private registry pinned by digest, alongside Kyverno.", "where": "config/policies/gatekeeper/", "offline": "Install from your own mirror if used.", "cmd": "kubectl apply -f require-digest-from-private-registry.yaml"}, {"name": "Sigstore policy-controller (reference)", "version": "—", "what": "Sigstore's own admission controller.", "why": "Alternative to Kyverno using TrustRoot + ClusterImagePolicy. Provided as an untested reference.", "where": "config/policies/policy-controller/", "offline": "Not in the bundle.", "cmd": "—"}]}, {"id": "helpers", "name": "Helper container images", "short": "Short-lived jobs and utilities", "intro": "Small images the charts and scripts run once or in init containers. They appear in bundle/images.txt and you may see them in kubectl get pods.", "tools": [{"name": "scaffolding createdb", "version": "v0.7.33", "what": "Kubernetes Job image.", "why": "Creates the trillian database schema in MySQL on first install.", "where": "trillian chart", "offline": "Mirrored.", "cmd": "kubectl -n trillian-system logs job/trillian-createdb"}, {"name": "scaffolding createtree", "version": "v0.7.33", "what": "Kubernetes Job image.", "why": "Creates a Trillian tree for Rekor and for the CT log and stores its ID in a ConfigMap (rekor-config / ctlog-config). Skips if an ID already exists — which is what makes restore work.", "where": "rekor and ctlog charts", "offline": "Mirrored.", "cmd": "kubectl -n rekor-system get cm rekor-config -o yaml"}, {"name": "scaffolding createctconfig", "version": "v0.7.33", "what": "Kubernetes Job image.", "why": "Builds the CT log configuration: fetches Fulcio's root, loads your CT key from Secret ctlog-signer, writes Secret ctlog-secret.", "where": "ctlog chart", "offline": "Mirrored.", "cmd": "kubectl -n ctlog-system logs job/ctlog-createctconfig"}, {"name": "curlimages/curl", "version": "8.17.0", "what": "Tiny image containing curl.", "why": "Init containers that wait for Trillian / Fulcio to answer before Rekor and the CT config job start.", "where": "rekor and ctlog charts", "offline": "Mirrored.", "cmd": "—"}, {"name": "busybox", "version": "1.37 / pinned digest", "what": "Minimal Linux userland in one image.", "why": "Trillian init containers, the TUF unpack init container, DNS check pods, the Keycloak restore pod, and the demo app's base image.", "where": "trillian chart, tuf.yaml.tpl, 05, restore.sh, examples/demo-app", "offline": "Mirrored + host-images.tar.", "cmd": "—"}, {"name": "Kyverno helper images", "version": "v1.19.1", "what": "kyvernopre, kyverno-cli, readiness-checker.", "why": "Pre-start cleanup, CLI used by chart hooks, and readiness checks for the Kyverno install.", "where": "kyverno chart", "offline": "Mirrored.", "cmd": "—"}]}, {"id": "testing", "name": "Build & test tools", "short": "Used to validate the kit", "intro": "Not needed to run the stack. Used to prove the kit works (test/compose/run.sh) and to lint it. Useful if you change the kit.", "tools": [{"name": "Docker Compose", "version": "v2 (Docker plugin)", "what": "Runs multi-container apps from one YAML file.", "why": "Runs the same Sigstore images and arguments as the charts, without Kubernetes, for the end-to-end offline integration test.", "where": "test/compose/docker-compose.yml", "offline": "Ships with Docker.", "cmd": "test/compose/run.sh"}, {"name": "nginx (test gateway)", "version": "1.27", "what": "Web server / reverse proxy.", "why": "Stands in for Traefik in the Docker test: TLS termination and the *.sigstore.local names.", "where": "test/compose/nginx.conf", "offline": "Test only.", "cmd": "—"}, {"name": "Toolbox image (buildpack-deps)", "version": "bookworm-curl", "what": "Debian image with bash, curl, openssl.", "why": "A stand-in laptop on an --internal network with no internet, proving every client step works air-gapped.", "where": "test/compose/run.sh", "offline": "Test only.", "cmd": "—"}, {"name": "createtree (Trillian CLI)", "version": "v1.7.2", "what": "Trillian admin client.", "why": "Creates Trillian trees in the Docker test (in Kubernetes the createtree Job does it).", "where": "test/compose/run.sh", "offline": "Build with go install.", "cmd": "createtree --admin_server=127.0.0.1:18091"}, {"name": "Kyverno CLI", "version": "v1.19.1", "what": "Offline Kyverno policy evaluator.", "why": "Proved the ImageValidatingPolicy admits signed and denies unsigned images, against the live registry and TUF.", "where": "test/compose/run.sh (optional)", "offline": "Optional download.", "cmd": "kyverno apply policy.yaml --resource pods.yaml"}, {"name": "gator", "version": "v3.23.1", "what": "Gatekeeper's CLI test tool.", "why": "Validated the Gatekeeper digest/registry constraint.", "where": "docs/11 test report", "offline": "Optional.", "cmd": "gator test -f template.yaml -f pods.yaml"}, {"name": "shellcheck", "version": "v0.10.0", "what": "Static analyser for shell scripts.", "why": "Linted every script for bugs.", "where": "Development", "offline": "Optional.", "cmd": "shellcheck -x scripts/*.sh"}, {"name": "kubeconform", "version": "v0.6.7", "what": "Kubernetes manifest schema validator.", "why": "Validated the registry, Keycloak and TUF manifests against the Kubernetes API schema.", "where": "Development", "offline": "Optional.", "cmd": "kubeconform -strict file.yaml"}]}], "scripts": [["00-check-prereqs.sh", "Checks Docker resources, ports, kernel limits, bundled tools and hosts entries."], ["01-build-offline-bundle.sh", "ONLINE ONLY. Downloads tools and charts, mirrors all 25 images with digests, saves host images, writes checksums."], ["02-load-offline-bundle.sh", "Verifies checksums, loads host images, starts the local image mirror."], ["03-generate-pki.sh", "Generates all keys, certificates and random passwords into pki/."], ["04-create-cluster.sh", "Creates the kind cluster wired to the mirror and private registry."], ["05-deploy-ingress.sh", "Installs Traefik, TLS secrets and the CoreDNS *.sigstore.local zone."], ["06-deploy-registry.sh", "Deploys the private OCI registry."], ["07-deploy-keycloak.sh", "Deploys Keycloak, imports the realm, smoke-tests a token."], ["08-deploy-sigstore.sh", "Installs Trillian, Rekor, Fulcio and the CT log; verifies they use your keys."], ["09-configure-cosign.sh", "Creates trusted_root.json, signing_config.json, CA bundle, cosign.env."], ["10-sign-and-verify.sh", "Builds, pushes, keyless-signs and verifies the demo image."], ["11-inspect-rekor.sh", "Shows the Rekor log state and recent entries with signer certificates."], ["12-publish-tuf.sh", "Builds and serves the private TUF trust mirror."], ["13-deploy-policy.sh", "Installs Kyverno and the signature policy; tests admit/deny."], ["install-all.sh", "Runs the whole offline install in order."], ["verify-stack.sh", "PASS/FAIL health report for every component."], ["get-token.sh", "Fetches an OIDC token (user or CI) for non-interactive signing."], ["setup-hosts.sh", "Adds *.sigstore.local to /etc/hosts and optionally trusts the TLS root."], ["fix-node-dns.sh", "Re-adds node DNS entries after a reboot."], ["backup.sh / restore.sh", "Encrypted backup of keys + log database; full rebuild with history."], ["99-teardown.sh", "Deletes the cluster (and with --purge, the trust root)."]], "files": [["pki/", "All private keys, certificates and passwords. Never commit; back up encrypted."], ["out/trusted_root.json", "What to trust: Fulcio CA chain, Rekor key, CT log key."], ["out/signing_config.json", "Where to sign: Fulcio, Rekor and OIDC URLs."], ["out/tuf/root.json", "TUF bootstrap root distributed to clients and Kyverno."], ["out/cosign.env", "Shell environment for cosign (CA bundle and trust file paths)."], ["bundle/", "Offline bundle: tools, charts, image mirror, host images (≈5.1 GB)."], ["config/env.sh", "All names, IPs and pinned versions in one place."]], "flow": [["Login", "Keycloak", "Developer or CI gets an OIDC token"], ["Certify", "Fulcio", "Token → 10-minute certificate"], ["Witness", "CT log + Trillian", "Certificate logged, SCT returned"], ["Sign", "cosign", "Image digest signed with ephemeral key"], ["Record", "Rekor + Trillian", "Signature logged, inclusion proof returned"], ["Store", "Registry", "Bundle attached next to the image"], ["Enforce", "Kyverno + TUF", "Only signed images admitted"]]};
+/* Course content. Every fact here matches the sigstore-offline kit and the
+   enterprise design. Laptop versions come from laptop/config/env.sh; the enterprise
+   pins a few newer patch releases (kyverno chart 3.9.2, trillian chart 0.4.1). Edit text here, then run
+   tutorial/build.py. */
+
+const MODULES = [
+  { id: "flow", n: 1, title: "How keyless signing works", kind: "concept", minutes: 10,
+    summary: "Follow one signature from a developer's login to a Pod being admitted, and see which component does what." },
+  { id: "tools", n: 2, title: "The tools, one by one", kind: "concept", minutes: 15,
+    summary: "Explore all 45 tools and components: what each one is, why the kit needs it, and what breaks without it." },
+  { id: "pki", n: 3, title: "Keys, certificates and trust", kind: "concept", minutes: 12,
+    summary: "Two certificate hierarchies, two log keys (Rekor, CT) and a TUF root. Match each key to the job it does." },
+  { id: "install", n: 4, title: "Lab: bring up the stack", kind: "lab", minutes: 45,
+    summary: "Run the offline install step by step on your laptop, with the expected output for every step." },
+  { id: "sign", n: 5, title: "Lab: sign, verify, inspect", kind: "lab", minutes: 25,
+    summary: "Sign an image keylessly, verify it with only your trust root, then read the evidence in Rekor." },
+  { id: "gitsign", n: 6, title: "Lab: sign commits with gitsign", kind: "lab", minutes: 20,
+    summary: "Sign git commits and tags keylessly with the same login, Fulcio and Rekor, verify them, and see why GitHub says Unverified." },
+  { id: "policy", n: 7, title: "Enforcing signatures", kind: "concept", minutes: 15,
+    summary: "Read a Kyverno policy line by line and run images through a policy simulator, including OpenShift's native check." },
+  { id: "enterprise", n: 8, title: "Enterprise design on AWS", kind: "concept", minutes: 15,
+    summary: "How the laptop design becomes an organisation-wide platform: KMS-held CA keys, your corporate root, GitHub, and every cloud." },
+  { id: "trouble", n: 9, title: "Troubleshooting drills", kind: "drill", minutes: 10,
+    summary: "Seven real failure symptoms. Pick the cause, then see the fix." },
+];
+
+/* ---------------- Module 1: signing flow ---------------- */
+const FLOW_STEPS = [
+  { title: "Log in", tool: "Keycloak", nodes: ["dev", "keycloak"], edges: ["e-login"],
+    body: "cosign opens a browser login (or a device code, or uses a CI token). Keycloak returns an OIDC ID token with <code>iss</code> = <code>https://keycloak.sigstore.local/realms/sigstore</code>, <code>aud</code> = <code>sigstore</code>, and a verified e-mail. In CI the token comes from the pipeline instead.",
+    detail: "Fulcio only trusts the token because its issuer is listed in Fulcio's configuration, and Keycloak's HTTPS certificate chains to the TLS root given to Fulcio as <code>CACert</code>." },
+  { title: "Make a throw-away key", tool: "cosign", nodes: ["dev"], edges: [],
+    body: "cosign generates an ECDSA P-256 key pair in memory. The private key never touches disk and is discarded at the end of the run.",
+    detail: "Because the key lives for seconds, there is nothing to rotate, revoke or leak later. Identity, not key custody, is what verifiers check." },
+  { title: "Get a certificate", tool: "Fulcio", nodes: ["dev", "fulcio", "keycloak"], edges: ["e-cert", "e-jwks"],
+    body: "cosign sends Fulcio the token, the public key, and a signature proving it holds the private key. Fulcio checks the token against Keycloak's published keys and issues an X.509 certificate valid for <b>10 minutes</b>, signed by your intermediate CA.",
+    detail: "The certificate's Subject Alternative Name is the identity (e-mail, or a workflow URI for GitHub). A custom extension records the OIDC issuer." },
+  { title: "Log the certificate", tool: "CT log + Trillian", nodes: ["fulcio", "ct", "trillian"], edges: ["e-ct", "e-ct-tr"],
+    body: "Before finishing, Fulcio submits a pre-certificate to the Certificate Transparency log. The log stores it in a Trillian Merkle tree and returns a Signed Certificate Timestamp (SCT), which Fulcio embeds in the final certificate.",
+    detail: "Every certificate your CA ever issued is now auditable. A certificate without a valid SCT fails verification by default." },
+  { title: "Sign the image", tool: "cosign", nodes: ["dev"], edges: [],
+    body: "cosign signs the image's <b>digest</b> (sha256:…) with the ephemeral private key. Digests are immutable; tags are not, so you always sign and deploy digests.",
+    detail: "The same flow signs files (<code>sign-blob</code>) and in-toto attestations such as provenance or SBOMs (<code>attest</code>)." },
+  { title: "Record in Rekor", tool: "Rekor + Trillian", nodes: ["dev", "rekor", "trillian"], edges: ["e-rekor", "e-rk-tr"],
+    body: "cosign uploads the signature and certificate to Rekor. Rekor appends them to its own Trillian tree and returns a signed entry timestamp, an inclusion proof, and a signed checkpoint of the tree.",
+    detail: "The integrated time proves the signature was made while the 10-minute certificate was valid. That is why the signature still verifies years after the certificate expired." },
+  { title: "Store next to the image", tool: "Registry", nodes: ["dev", "registry"], edges: ["e-store"],
+    body: "cosign pushes a Sigstore bundle (certificate, signature, SCT, Rekor proof) to the registry and links it to the image digest as an OCI referrer.",
+    detail: "Registries without the OCI 1.1 referrers API (like registry:2.8 in the kit) get an index tagged <code>sha256-&lt;digest&gt;</code> instead. cosign and Kyverno read both." },
+  { title: "Enforce at admission", tool: "Kyverno + TUF", nodes: ["kyverno", "registry", "tuf"], edges: ["e-kyv-reg", "e-kyv-tuf"],
+    body: "When a Pod is created, Kyverno fetches the bundle, checks the chain to your Fulcio root, the SCT, the Rekor proof and the identity, using trust material from your private TUF mirror. Unsigned or wrongly signed images are rejected.",
+    detail: "Verification needs only <code>trusted_root.json</code>. Keycloak, Fulcio and Rekor do not have to be reachable for a Pod to start." },
+];
+
+const QUIZ = {};
+QUIZ.flow = [
+  { q: "What does Fulcio need from you before it issues a signing certificate?",
+    a: ["Your long-lived private key", "An OIDC ID token, your public key and proof you hold the private key", "A CSR approved by a CA administrator", "A Rekor entry UUID"], c: 1,
+    why: "Fulcio binds a verified identity (the OIDC token) to a public key. The proof of possession stops someone replaying your token with their own key." },
+  { q: "How long is a Fulcio-issued certificate valid?",
+    a: ["10 minutes", "24 hours", "1 year", "Until revoked"], c: 0,
+    why: "Short validity removes the need for revocation. The Rekor timestamp proves the signature happened inside that window." },
+  { q: "A signature was made a year ago and its certificate expired after 10 minutes. Why does it still verify?",
+    a: ["cosign ignores expiry", "Rekor's integrated time shows the signature was made while the certificate was valid", "Fulcio renews certificates automatically", "The registry keeps the certificate fresh"], c: 1,
+    why: "Verifiers check the signed entry timestamp from Rekor against the certificate's notBefore/notAfter, not the current time." },
+  { q: "Where does the private signing key live?",
+    a: ["In ~/.sigstore", "In a Kubernetes Secret", "Only in cosign's memory for the duration of the run", "In Rekor"], c: 2,
+    why: "That is the 'keyless' part: the key is ephemeral, so there is nothing to store or rotate." },
+  { q: "What does the CT log give back to Fulcio?",
+    a: ["An inclusion proof for the image", "A Signed Certificate Timestamp (SCT) that is embedded in the certificate", "The image digest", "A new intermediate certificate"], c: 1,
+    why: "The SCT is the CT log's promise that the certificate is logged. cosign rejects certificates without a valid SCT by default." },
+];
+
+/* ---------------- Module 2: what breaks without each tool ---------------- */
+const BREAKS = {
+  "Docker (Engine / Desktop)": "Nothing runs: no kind node, no image mirror, no TUF builder.",
+  "WSL2 (Windows only)": "On Windows the bash scripts have no Linux shell to run in.",
+  "kind": "No Kubernetes cluster, so none of the Helm charts or policies can be installed.",
+  "kubectl": "You cannot create the key Secrets, apply manifests or read logs.",
+  "Helm": "The Sigstore, Traefik and Kyverno charts cannot be installed at their pinned versions.",
+  "crane": "The offline mirror cannot be built with digests intact, so digest-pinned charts fail to pull offline.",
+  "cosign": "No signing, no verification, and no trusted_root.json or signing_config.json.",
+  "gitsign": "Images are still signed, but nothing proves who wrote the commits they were built from.",
+  "jq": "Scripts cannot read tokens, Rekor responses or trust files; health checks fail.",
+  "OpenSSL": "No keys or certificates: no TLS, no Fulcio CA, no Rekor or CT keys.",
+  "curl": "No health checks, and get-token.sh cannot fetch OIDC tokens.",
+  "bash, perl, coreutils": "Scripts cannot run, templates cannot render, the bundle cannot be checksummed.",
+  "PowerShell": "On Windows, browsers and cosign.exe will not resolve or trust *.sigstore.local.",
+  "containerd (in the kind node)": "Without its hosts.toml mirrors, every image pull tries the internet and fails offline.",
+  "Offline image mirror (registry:2)": "Offline image pulls have nowhere to go: Pods sit in ImagePullBackOff.",
+  "Traefik": "No HTTPS endpoint for Keycloak, Fulcio, Rekor, the registry or TUF.",
+  "CoreDNS": "Pods cannot resolve *.sigstore.local; Fulcio cannot reach Keycloak to verify tokens.",
+  "local-path-provisioner": "PersistentVolumeClaims stay Pending; MySQL, the registry and Keycloak never start.",
+  "Fulcio": "No certificates, so no keyless signing at all. Existing signatures still verify.",
+  "CT log (ct_server / ctfe)": "Fulcio cannot obtain SCTs and refuses to issue certificates.",
+  "Rekor": "Signing fails at the upload step; no transparency record, no timestamp proof.",
+  "Trillian (log server + log signer)": "Rekor and the CT log have no storage. Without the log signer, entries never get inclusion proofs.",
+  "MySQL (trillian db_server)": "Trillian has nowhere to store trees; losing it loses the audit history.",
+  "Redis": "Search by artifact hash is slower or empty until rebuilt. Signing and verification still work.",
+  "Keycloak": "No OIDC tokens, so people and pipelines cannot obtain certificates.",
+  "Private OCI registry (registry:2)": "Nowhere to push images or their signature bundles.",
+  "TUF repository (scaffolding server)": "Kyverno cannot bootstrap trust for keyless verification, and clients cannot pick up rotated roots.",
+  "Private PKI (generated)": "Nothing chains to a root you control; every component is untrusted.",
+  "Kyverno": "Unsigned images run. Signing becomes a convention instead of a control.",
+  "OPA Gatekeeper (optional)": "Optional: images from unapproved registries or by tag are no longer blocked by Gatekeeper (Kyverno still checks signatures).",
+  "Sigstore policy-controller (reference)": "Nothing; it is an alternative reference, not installed by default.",
+  "scaffolding createdb": "Trillian's MySQL schema is never created; the log servers crash on start.",
+  "scaffolding createtree": "Rekor and the CT log have no tree ID and cannot start.",
+  "scaffolding createctconfig": "The CT log has no configuration and never becomes ready.",
+  "curlimages/curl": "Init containers that wait for dependencies are missing; start-up order becomes racy.",
+  "busybox": "Init containers, DNS checks and the demo image base are missing.",
+  "Kyverno helper images": "The Kyverno install's pre-start and readiness steps fail.",
+};
+
+QUIZ.tools = [
+  { q: "Which tool builds the offline image mirror while keeping every image's original digest?",
+    a: ["docker save", "crane copy", "helm pull", "kind load docker-image"], c: 1,
+    why: "crane copy moves the full multi-arch index, so digests are unchanged and the charts' @sha256 references resolve offline." },
+  { q: "Why does the kit use Traefik rather than ingress-nginx?",
+    a: ["Traefik is faster", "ingress-nginx was retired by the Kubernetes project in March 2026", "Sigstore charts only support Traefik", "ingress-nginx cannot do TLS"], c: 1,
+    why: "Any maintained ingress controller works; the kit avoids building on a retired project." },
+  { q: "The Trillian log signer is not running. What do you see?",
+    a: ["Fulcio refuses to start", "Entries are accepted but never get inclusion proofs", "Kyverno denies every Pod", "Keycloak logins fail"], c: 1,
+    why: "The log server queues leaves; the log signer integrates them into the tree. Without it, the tree never grows." },
+  { q: "Which component is safe to leave out of backups?",
+    a: ["MySQL", "pki/", "Redis", "Keycloak's database"], c: 2,
+    why: "Redis is only Rekor's search index and can be rebuilt from the log. MySQL holds the transparency history itself." },
+  { q: "What does a containerd hosts.toml with override_path do in the kind node?",
+    a: ["Trusts a self-signed registry", "Redirects pulls for an upstream registry to the local mirror path /v2/<registry>/<repo>", "Caches images on disk", "Signs images on pull"], c: 1,
+    why: "That is how docker.io, ghcr.io, quay.io and the rest are served from bundle/mirror with no internet." },
+];
+
+/* ---------------- Module 3: PKI ---------------- */
+const KEYS = [
+  { id: "tlsroot", label: "TLS root CA", job: "j-tlsroot", tree: "tls",
+    info: "EC P-256, 10 years, pathlen 0. Signs only the server certificate. Laptops, Fulcio and Kyverno trust it for HTTPS." },
+  { id: "wildcard", label: "*.sigstore.local certificate", job: "j-wildcard", tree: "tls",
+    info: "EC P-256, 397 days, serverAuth. Served by Traefik for every endpoint." },
+  { id: "fulcioroot", label: "Fulcio root CA", job: "j-fulcioroot", tree: "cs",
+    info: "EC P-384, 10 years, pathlen 1. Kept offline. Used only at a ceremony to sign the intermediate." },
+  { id: "fulciointer", label: "Fulcio intermediate CA", job: "j-fulciointer", tree: "cs",
+    info: "EC P-384, 5 years, pathlen 0, EKU codeSigning (required by Fulcio). Loaded by Fulcio; in production held in AWS KMS." },
+  { id: "ephemeral", label: "Ephemeral signing key", job: "j-ephemeral", tree: "cs",
+    info: "EC P-256 generated by cosign per run, never stored. Its certificate lives 10 minutes." },
+  { id: "rekor", label: "Rekor signing key", job: "j-rekor", tree: "logs",
+    info: "EC P-256. Signs entry timestamps and checkpoints. Rekor's log ID is the SHA-256 of this public key." },
+  { id: "ct", label: "CT log key", job: "j-ct", tree: "logs",
+    info: "EC P-256 in legacy encrypted PEM (the only encrypted form the CT front-end reads). Signs SCTs." },
+  { id: "tuf", label: "TUF root key(s)", job: "j-tuf", tree: "logs",
+    info: "Signs the TUF root metadata that tells clients which keys may sign trusted_root.json. In production: k-of-n offline keys." },
+];
+const JOBS = [
+  { id: "j-tlsroot", text: "Signs the HTTPS server certificate" },
+  { id: "j-wildcard", text: "Proves to clients that they reached the real Fulcio, Rekor or Keycloak" },
+  { id: "j-fulcioroot", text: "Signs the issuing CA certificate once, at a ceremony" },
+  { id: "j-fulciointer", text: "Issues the 10-minute certificates for every signer" },
+  { id: "j-ephemeral", text: "Signs the image digest itself" },
+  { id: "j-rekor", text: "Signs transparency-log timestamps and checkpoints" },
+  { id: "j-ct", text: "Signs Signed Certificate Timestamps (SCTs)" },
+  { id: "j-tuf", text: "Authorises updates to the trust root that every client downloads" },
+];
+
+QUIZ.pki = [
+  { q: "Why does the kit keep TLS and code-signing in separate hierarchies?",
+    a: ["Browsers require it", "So a leak of one never lets an attacker forge the other", "OpenSSL cannot mix them", "To save certificate fees"], c: 1,
+    why: "A TLS key compromise lets someone impersonate a server; a code-signing compromise lets them mint signatures. Keep the blast radius separate." },
+  { q: "Fulcio refuses to start with your intermediate CA. Which extension is most likely missing?",
+    a: ["subjectAltName", "extendedKeyUsage = codeSigning", "OCSP no-check", "nameConstraints"], c: 1,
+    why: "Fulcio's VerifyCertChain requires the issuing certificate in a chain to carry the codeSigning EKU." },
+  { q: "In the chain file Fulcio loads, which certificate comes first?",
+    a: ["The root", "The issuing (intermediate) certificate", "Any order works", "The TLS certificate"], c: 1,
+    why: "Issuing certificate first, root last. cosign's trusted-root builder expects the same order." },
+  { q: "Rekor was installed with the chart default signer 'memory'. What happens after a restart?",
+    a: ["Nothing", "Rekor signs with a new random key, so clients' trust roots no longer match", "Rekor loses all entries", "Fulcio stops issuing"], c: 1,
+    why: "That is why the kit always mounts its own Rekor key (file locally, AWS KMS in production)." },
+  { q: "What is the TUF root used for?",
+    a: ["Encrypting the registry", "Authorising which keys may publish trusted_root.json updates", "Issuing TLS certificates", "Signing images"], c: 1,
+    why: "Clients pin the TUF root once; after that, rotations of Fulcio, Rekor or CT keys arrive as signed TUF updates." },
+];
+
+/* ---------------- Module 4: install lab ---------------- */
+const INSTALL_STEPS = [
+  { id: "s01", n: "01", where: "online", title: "Build the offline bundle",
+    cmd: "DOCKERHUB_MIRROR=mirror.gcr.io WITH_WINDOWS_CLI=1 scripts/01-build-offline-bundle.sh",
+    expect: " ✔  25 images: see bundle/images.txt\n ✔  mirror populated: 4.2G\n ✔  Offline bundle complete: 5.1G.",
+    note: "Run once on a machine with internet, then copy the whole folder (with bundle/) to the laptop." },
+  { id: "s00", n: "00", where: "laptop", title: "Check prerequisites",
+    cmd: "scripts/00-check-prereqs.sh",
+    expect: " ✔  docker memory 8 GiB\n ✔  port 443 free\n ✔  All prerequisites satisfied",
+    note: "Hosts-file checks fail until step 05. That is expected." },
+  { id: "s02", n: "02", where: "laptop", title: "Load the bundle and start the mirror",
+    cmd: "scripts/02-load-offline-bundle.sh",
+    expect: " ✔  SHA256SUMS verified\n ✔  mirror serving 23 repositories on 127.0.0.1:5000",
+    note: "The mirror is plain HTTP on localhost only; it is plumbing between Docker and kind." },
+  { id: "s03", n: "03", where: "laptop", title: "Generate keys and certificates",
+    cmd: "scripts/03-generate-pki.sh",
+    expect: " ✔  PKI written to …/pki\nsubject=O = Sigstore Offline Lab, OU = Code Signing, CN = Sigstore Offline Fulcio Root CA",
+    note: "Back up pki/ encrypted straight away. It holds every key and password." },
+  { id: "s04", n: "04", where: "laptop", title: "Create the kind cluster",
+    cmd: "scripts/04-create-cluster.sh",
+    expect: " ✔  sigstore-control-plane: keycloak.sigstore.local … -> 10.96.100.100\n ✔  Cluster ready: v1.37.0",
+    note: "Writes containerd hosts.toml files so every image comes from the mirror." },
+  { id: "s05", n: "05", where: "laptop", title: "Ingress, TLS and DNS",
+    cmd: "scripts/05-deploy-ingress.sh\nsudo scripts/setup-hosts.sh --trust-ca",
+    expect: " ✔  Traefik ready at ClusterIP 10.96.100.100 (host ports 80/443)\n ✔  pods resolve fulcio.sigstore.local -> 10.96.100.100",
+    note: "On Windows run windows\\Setup-Hosts.ps1 as Administrator, then wsl --shutdown." },
+  { id: "s06", n: "06", where: "laptop", title: "Private registry",
+    cmd: "scripts/06-deploy-registry.sh",
+    expect: " ✔  https://registry.sigstore.local serving (OCI distribution API v2)", note: "" },
+  { id: "s07", n: "07", where: "laptop", title: "Keycloak (OIDC)",
+    cmd: "scripts/07-deploy-keycloak.sh",
+    expect: " ✔  OIDC issuer https://keycloak.sigstore.local/realms/sigstore\n  iss=https://keycloak.sigstore.local/realms/sigstore\n  aud=sigstore\n  email=alice@sigstore.local email_verified=true",
+    note: "If iss shows http:// or a port, KC_HOSTNAME is wrong and Fulcio will reject tokens." },
+  { id: "s08", n: "08", where: "laptop", title: "Trillian, Rekor, Fulcio, CT log",
+    cmd: "scripts/08-deploy-sigstore.sh",
+    expect: " ✔  Fulcio CA     = pki/fulcio/chain.pem\n ✔  Fulcio trusts https://keycloak.sigstore.local/realms/sigstore\n ✔  Rekor key     = pki/rekor/rekor.pub\n ✔  CT log key    = pki/ctlog/ctlog.pub",
+    note: "Order matters: the CT log's config job fetches Fulcio's root, so Fulcio must be up first." },
+  { id: "s09", n: "09", where: "laptop", title: "Configure cosign trust",
+    cmd: "scripts/09-configure-cosign.sh\nsource out/cosign.env",
+    expect: "  Fulcio CAs : 1  (https://fulcio.sigstore.local)\n  Rekor logs : 1  (https://rekor.sigstore.local)\n  CT logs    : 1  (http://ctlog.ctlog-system.svc/sigstore)", note: "" },
+  { id: "s12", n: "12", where: "laptop", title: "Publish the TUF mirror",
+    cmd: "scripts/12-publish-tuf.sh",
+    expect: " ✔  TUF repo built: 6 targets, metadata expires 2027-04-…\n ✔  TUF mirror live at https://tuf.sigstore.local",
+    note: "Lab TUF metadata expires after 6 months; re-run before then." },
+  { id: "s13", n: "13", where: "laptop", title: "Enforce with Kyverno",
+    cmd: "scripts/13-deploy-policy.sh",
+    expect: " ✔  signed image admitted\n ✔  unsigned image denied",
+    note: "Run after module 5 so a signed image exists to test with." },
+  { id: "sv", n: "✓", where: "laptop", title: "Health check",
+    cmd: "scripts/verify-stack.sh",
+    expect: "  PASS  Fulcio CA = pki chain      match\n  PASS  Rekor key = pki rekor.pub  match\n  …\n  30 passed, 0 failed", note: "" },
+];
+
+QUIZ.install = [
+  { q: "Which step must run on a machine with internet access?",
+    a: ["00 check prerequisites", "01 build the offline bundle", "03 generate PKI", "08 deploy Sigstore"], c: 1,
+    why: "Everything else uses only what 01 put in bundle/." },
+  { q: "Why must Fulcio be running before the CT log is installed?",
+    a: ["They share a database", "The CT log's createctconfig job downloads Fulcio's root to know which certificates to accept", "Helm requires alphabetical order", "Fulcio creates the CT key"], c: 1,
+    why: "The CT front-end only accepts chains to the roots in its config, which it fetches from Fulcio." },
+  { q: "How do Pods resolve keycloak.sigstore.local?",
+    a: ["Public DNS", "A CoreDNS template zone answering every *.sigstore.local name with Traefik's ClusterIP", "The laptop's hosts file", "Kubernetes Service names"], c: 1,
+    why: "So Fulcio reaches Keycloak at exactly the URL in the token's iss claim." },
+  { q: "Why does the kind node also need an /etc/hosts entry?",
+    a: ["For kubectl", "containerd runs outside the Pod network and cannot use CoreDNS when pulling your images", "For Helm", "It does not need one"], c: 1,
+    why: "Re-run scripts/fix-node-dns.sh after a laptop reboot, because Docker rewrites that file." },
+  { q: "What tells you the whole stack is healthy?",
+    a: ["kubectl get pods shows Running", "scripts/verify-stack.sh exits with every line PASS", "Keycloak login works", "Helm list shows deployed"], c: 1,
+    why: "verify-stack also compares every served key with pki/, which 'Running' alone cannot tell you." },
+];
+
+/* ---------------- Module 5: sign lab ---------------- */
+const SIGN_STEPS = [
+  { id: "g1", title: "Build and push the demo image",
+    cmd: "docker build -t registry.sigstore.local/demo/hello:v1 examples/demo-app\ndocker save registry.sigstore.local/demo/hello:v1 -o /tmp/hello.tar\ncrane push /tmp/hello.tar registry.sigstore.local/demo/hello:v1",
+    expect: "registry.sigstore.local/demo/hello@sha256:9a59b79d…", note: "crane trusts the private CA through SSL_CERT_FILE, so Docker itself does not need to." },
+  { id: "g2", title: "Resolve the digest",
+    cmd: "IMAGE=registry.sigstore.local/demo/hello@$(crane digest registry.sigstore.local/demo/hello:v1)\necho $IMAGE",
+    expect: "registry.sigstore.local/demo/hello@sha256:9a59b79d968987f666fd0f2a6007b408bf4ef646304ebbafa7299a55dc0dcd23", note: "" },
+  { id: "g3", title: "Sign keylessly (browser login)",
+    cmd: "cosign sign --yes \\\n  --signing-config \"$SIGSTORE_SIGNING_CONFIG\" \\\n  --trusted-root   \"$SIGSTORE_TRUSTED_ROOT\" \\\n  --oidc-redirect-url http://localhost:8765/auth/callback \\\n  \"$IMAGE\"",
+    expect: "Generating ephemeral keys...\nRetrieving signed certificate...\nSigning artifact...\nPushing signature to: registry.sigstore.local/demo/hello",
+    note: "Log in as alice. Headless shell? Use --fulcio-auth-flow device, or --identity-token \"$(scripts/get-token.sh user)\"." },
+  { id: "g4", title: "Verify with only your trust root",
+    cmd: "cosign verify --trusted-root \"$SIGSTORE_TRUSTED_ROOT\" \\\n  --certificate-identity alice@sigstore.local \\\n  --certificate-oidc-issuer https://keycloak.sigstore.local/realms/sigstore \\\n  \"$IMAGE\"",
+    expect: "The following checks were performed on each of these signatures:\n  - The cosign claims were validated\n  - Existence of the claims in the transparency log was verified offline\n  - The code-signing certificate was verified using trusted certificate authority certificates", note: "" },
+  { id: "g5", title: "Prove the negative",
+    cmd: "cosign verify --trusted-root \"$SIGSTORE_TRUSTED_ROOT\" \\\n  --certificate-identity mallory@sigstore.local \\\n  --certificate-oidc-issuer https://keycloak.sigstore.local/realms/sigstore \"$IMAGE\"",
+    expect: "Error: no matching attestations: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value \"mallory@sigstore.local\", got \"alice@sigstore.local\"", note: "A verification you never saw fail is not a test. cosign v3 bundles go through the attestation path, which is why the error says attestations." },
+  { id: "g6", title: "See what is attached to the image",
+    cmd: "cosign tree \"$IMAGE\"",
+    expect: "📦 Supply Chain Security Related artifacts for an image: registry.sigstore.local/demo/hello@sha256:9a59…\n└── 🔗 https://sigstore.dev/cosign/sign/v1 artifacts via OCI referrer: …@sha256:aead…", note: "" },
+  { id: "g7", title: "Read your Rekor log",
+    cmd: "scripts/11-inspect-rekor.sh 1",
+    expect: "logIndex       : 1\nkind           : dsse/0.0.1\n  cert: issuer=… CN = Sigstore Offline Fulcio Intermediate CA\n  cert: notBefore=Oct 19 19:32:49 2026 GMT\n  cert: notAfter=Oct 19 19:42:49 2026 GMT\n  cert:     email:alice@sigstore.local", note: "" },
+];
+
+/* Clickable Rekor entry (abbreviated from the kit's integration test). */
+const REKOR_FIELDS = [
+  ["logIndex", "1", "Position of this entry in the log. Strictly increasing; gaps never happen in an append-only log."],
+  ["logID", "\"b7ed7e9681ffe3f3…\"", "SHA-256 of Rekor's public key. Verifiers use it to pick the right key from trusted_root.json."],
+  ["integratedTime", "1792438369", "Unix time Rekor integrated the entry. Must fall inside the certificate's 10-minute validity."],
+  ["kind", "\"dsse\"", "Entry type. cosign v3 records signatures as DSSE envelopes; older clients used hashedrekord."],
+  ["body.spec.envelopeHash", "\"sha256:38cd32bc…\"", "Hash of the whole DSSE envelope. body.spec.payloadHash is the hash of the signed payload; search Rekor by either, or by the image digest."],
+  ["body.spec.signatures[0].verifier", "\"LS0tLS1CRUdJTi…\"", "The signer's Fulcio certificate (base64 PEM). Decode it to see the identity and issuer."],
+  ["verification.signedEntryTimestamp", "\"MEUCIQDk…\"", "Rekor's signature over the entry and its time. Proves the log accepted it at integratedTime."],
+  ["verification.inclusionProof.hashes", "[\"6d1c…\"]", "Merkle audit path from this entry to the tree root. One hash here because the tree had two entries."],
+  ["verification.inclusionProof.checkpoint", "\"rekor.sigstore.local - 7370…\\n2\\nHAAla…\"", "A signed note of tree size and root hash. Comparing checkpoints over time proves nothing was removed."],
+];
+
+QUIZ.sign = [
+  { q: "Why do you sign and deploy by digest rather than by tag?",
+    a: ["Digests are shorter", "Tags can be moved to different content; digests cannot", "cosign cannot read tags", "Registries delete tags"], c: 1,
+    why: "A signature on a digest is a signature on exact bytes." },
+  { q: "cosign says the transparency log was 'verified offline'. What happened?",
+    a: ["cosign skipped the log", "The inclusion proof and checkpoint inside the bundle were checked against the Rekor key in trusted_root.json", "Rekor was down", "The registry verified it"], c: 1,
+    why: "No call to Rekor is needed at verification time." },
+  { q: "On registry:2.8, where does cosign v3 put the signature bundle?",
+    a: ["In the image's layers", "In an index tagged sha256-<image digest> (the referrers tag fallback)", "In Rekor only", "In a .sig file on disk"], c: 1,
+    why: "registry:2.8 has no /referrers API, so the OCI 1.1 spec's tag schema is used. Harbor, ECR and ACR support referrers natively." },
+  { q: "What is Rekor's logID?",
+    a: ["The Trillian tree ID", "The SHA-256 of Rekor's public key", "The first entry's UUID", "The hostname"], c: 1,
+    why: "Changing Rekor's key changes its log ID, which is why trusted roots list keys with validity windows." },
+  { q: "Which command lets a machine drop all --trusted-root and --signing-config flags?",
+    a: ["cosign login", "cosign initialize --mirror https://tuf.sigstore.local --root out/tuf/root.json", "cosign trusted-root create", "cosign env"], c: 1,
+    why: "cosign then reads both files from your private TUF mirror." },
+];
+
+/* ---------------- Module 6: gitsign lab ----------------
+   Outputs are from laptop/test/compose/gitsign-test.sh (gitsign v0.18.0, 2026-10-24). */
+const GITSIGN_STEPS = [
+  { id: "t1", title: "Check gitsign is in the bundle",
+    cmd: "export PATH=\"$PWD/bundle/bin:$PATH\"\ngitsign --version",
+    expect: "gitsign version v0.18.0",
+    note: "01-build-offline-bundle.sh downloaded it on the online machine and checked it against the release checksums.txt (gitsign releases have no sigstore bundle)." },
+  { id: "t2", title: "Export trust and configure git",
+    cmd: "source out/cosign.env\nscripts/14-configure-gitsign.sh --global\nsource out/gitsign/gitsign.env\ngit config --global user.email alice@sigstore.local",
+    expect: "==> Fetching trust from https://tuf.sigstore.local and exporting it for gitsign\n==> Configuring git (--global) in .\n ✔  gitsign configured. Next:",
+    note: "gitsign does not read trusted_root.json. export-trust.sh derives the three files it does read (Fulcio chain, Rekor key, CT key) from trusted_root.json, and gitsign.env exports GITSIGN_FULCIO_ROOT, SIGSTORE_REKOR_PUBLIC_KEY and SIGSTORE_CT_LOG_PUBLIC_KEY_FILE." },
+  { id: "t3", title: "Look at what the script set",
+    cmd: "git config --global --get-regexp '^(gpg|gitsign|commit|tag)\\.'",
+    expect: "gpg.format x509\ngpg.x509.program gitsign\ncommit.gpgsign true\ntag.gpgsign true\ngitsign.fulcio https://fulcio.sigstore.local\ngitsign.rekor https://rekor.sigstore.local\ngitsign.issuer https://keycloak.sigstore.local/realms/sigstore\ngitsign.clientid sigstore\ngitsign.redirecturl http://localhost:8765/auth/callback\ngitsign.rekormode offline\ngitsign.matchcommitter true",
+    note: "rekorMode offline stores the Rekor inclusion proof inside the commit, so verification never has to call Rekor. git prints keys in lower case." },
+  { id: "t4", title: "Make a signed commit and tag",
+    cmd: "git init -q ~/gitsign-demo && cd ~/gitsign-demo\necho hello > README.md && git add README.md\ngit commit -m \"signed commit\"\ngit tag -m v0.1.0 v0.1.0",
+    expect: "(a browser opens: log in as alice)\n[master (root-commit) 284405d] signed commit\n 1 file changed, 1 insertion(+)\n create mode 100644 README.md",
+    note: "One login per signature. Headless shell? git config --global gitsign.tokenProvider device for the device-code flow." },
+  { id: "t5", title: "Verify the commit",
+    cmd: "gitsign verify --certificate-identity alice@sigstore.local \\\n  --certificate-oidc-issuer https://keycloak.sigstore.local/realms/sigstore HEAD",
+    expect: "tlog index: 4\ngitsign: Signature made using certificate ID 0x6401b830… | CN=Sigstore Offline Fulcio Intermediate CA,OU=Code Signing,O=Sigstore Offline Lab\ngitsign: Good signature from [alice@sigstore.local](https://keycloak.sigstore.local/realms/sigstore)\nValidated Git signature: true\nValidated Rekor entry: true\nValidated Certificate claims: true",
+    note: "Three separate checks: the CMS signature over the commit, the Rekor inclusion proof, and the identity and issuer in the certificate." },
+  { id: "t6", title: "Verify the tag, and through git",
+    cmd: "gitsign verify-tag --certificate-identity alice@sigstore.local \\\n  --certificate-oidc-issuer https://keycloak.sigstore.local/realms/sigstore v0.1.0\ngit verify-commit HEAD",
+    expect: "tlog index: 10\ngitsign: Good signature from [alice@sigstore.local](https://keycloak.sigstore.local/realms/sigstore)\nValidated Git signature: true\nValidated Rekor entry: true\nValidated Certificate claims: true\n\n(git verify-commit HEAD)\ngitsign: Good signature from [alice@sigstore.local](https://keycloak.sigstore.local/realms/sigstore)\nValidated Git signature: true\nValidated Rekor entry: true\nValidated Certificate claims: false\nWARNING: git verify-commit does not verify cert claims. Prefer using `gitsign verify` instead.",
+    note: "git verify-commit calls gitsign (gpg.x509.program) but cannot pass an expected identity, so it proves the signature and the Rekor entry, not who signed. Gates and CI must use gitsign verify with --certificate-identity." },
+  { id: "t7", title: "Prove the negatives",
+    cmd: "gitsign verify --certificate-identity mallory@sigstore.local \\\n  --certificate-oidc-issuer https://keycloak.sigstore.local/realms/sigstore HEAD\ngit config user.email bob@sigstore.local; git commit --allow-empty -m test",
+    expect: "Error: no signer could be verified: signer 0: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value \"mallory@sigstore.local\", got \"alice@sigstore.local\"\nerror: gpg failed to sign the data   (GITSIGN_LOG shows: gitsign.matchCommitter: certificate identity does not match config - want … <bob@sigstore.local>, got email: [alice@sigstore.local])",
+    note: "Set user.email back to alice@sigstore.local afterwards. In a shell without gitsign.env, verification also fails: gitsign falls back to the public Sigstore TUF root and cannot reach it." },
+];
+
+QUIZ.gitsign = [
+  { q: "Where does gitsign v0.18 get the Fulcio CA and Rekor key it trusts?",
+    a: ["From trusted_root.json, like cosign", "From GITSIGN_FULCIO_ROOT, SIGSTORE_REKOR_PUBLIC_KEY and SIGSTORE_CT_LOG_PUBLIC_KEY_FILE (or legacy TUF targets)", "From the git server", "From ~/.gnupg"], c: 1,
+    why: "That is why the kit exports those files from trusted_root.json: one source of truth for cosign, Kyverno and gitsign." },
+  { q: "What does gitsign.rekorMode offline change?",
+    a: ["Nothing is written to Rekor", "The Rekor inclusion proof is stored in the commit signature, so verification needs no call to Rekor", "Rekor runs on the laptop", "Signatures are skipped when offline"], c: 1,
+    why: "The entry is still written to Rekor at signing time; only verification becomes offline." },
+  { q: "GitHub shows your gitsign commits as \"Unverified\". What is wrong?",
+    a: ["The signature is invalid", "Nothing: GitHub checks S/MIME signatures only against public CAs, and your Fulcio CA is private", "Rekor is down", "The certificate expired after 10 minutes"], c: 1,
+    why: "Enforce with a workflow that runs gitsign verify against your trust root, required by an organisation ruleset so pull requests cannot change it, not with GitHub's \"Require signed commits\" rule, which would reject them." },
+  { q: "The certificate expired 10 minutes after the commit. Why does the commit still verify a year later?",
+    a: ["gitsign ignores expiry", "Rekor's signed timestamp proves the signature was made while the certificate was valid", "The certificate renews itself", "git caches the result"], c: 1,
+    why: "Same model as cosign: the transparency-log entry is the time evidence." },
+  { q: "What does gitsign.matchCommitter true protect against?",
+    a: ["Unsigned tags", "Committing as one person while signing with another person's login", "Expired tokens", "Force-pushes"], c: 1,
+    why: "gitsign refuses to sign when user.email differs from the e-mail in the certificate." },
+  { q: "git verify-commit HEAD prints 'Validated Certificate claims: false'. Why?",
+    a: ["The commit was tampered with", "git cannot pass an expected identity to gitsign, so the identity is not checked; use gitsign verify --certificate-identity", "Rekor rejected it", "The CA is untrusted"], c: 1,
+    why: "The signature and the Rekor entry are still verified; only the who is missing. That is why the CI check calls gitsign verify." },
+];
+
+/* ---------------- Module 7: policy ---------------- */
+const POLICY_LINES = [
+  ["apiVersion: policies.kyverno.io/v1", "Kyverno 1.19 policy API. ImageValidatingPolicy is stable in this version."],
+  ["kind: ImageValidatingPolicy", "A policy type dedicated to image signatures and attestations, written with CEL expressions."],
+  ["spec:", ""],
+  ["  validationActions: [Deny]", "Deny blocks the Pod. Start with Audit in an existing cluster, then switch tier by tier."],
+  ["  failurePolicy: Fail", "If Kyverno cannot be reached, the Pod is rejected. An outage must never mean 'allow'."],
+  ["  matchImageReferences:", ""],
+  ["    - glob: \"registry.sigstore.local/*\"", "Only images from your registry are checked. Add every registry you deploy from."],
+  ["  attestors:", ""],
+  ["    - name: privateSigstore", "A named set of trust rules, referenced from the validation expression."],
+  ["      cosign:", ""],
+  ["        keyless:", "Keyless signatures: verify a Fulcio certificate rather than a fixed public key."],
+  ["          identities:", ""],
+  ["            - issuer: \"https://keycloak.sigstore.local/realms/sigstore\"", "Must equal the certificate's OIDC issuer extension exactly."],
+  ["              subjectRegExp: '^[A-Za-z0-9._%+-]+@sigstore\\.local$'", "Who may sign. In production pin exact workflow URIs per namespace."],
+  ["        tuf:", ""],
+  ["          mirror: \"https://tuf.sigstore.local\"", "Where Kyverno downloads trusted_root.json. Without this it tries the public Sigstore CDN."],
+  ["          root: { data: \"<base64 of out/tuf/root.json>\" }", "The pinned TUF root. Every later update must be signed by keys it authorises."],
+  ["  validations:", ""],
+  ["    - expression: >-", ""],
+  ["        images.containers.map(image, verifyImageSignatures(image, [attestors.privateSigstore])).all(e, e > 0)", "Every container image must have at least one signature that passes the attestor."],
+];
+
+const SIM_IMAGES = [
+  { id: "wf-main", label: "payments/api — signed by the central sign.yml (main)", signed: true, format: "bundle",
+    issuer: "https://token.actions.githubusercontent.com/example-bank",
+    san: "https://github.com/example-bank/platform-workflows/.github/workflows/sign.yml@refs/heads/main", sanType: "URI" },
+  { id: "wf-branch", label: "payments/api — signed by an unreviewed copy of sign.yml on a branch", signed: true, format: "bundle",
+    issuer: "https://token.actions.githubusercontent.com/example-bank",
+    san: "https://github.com/example-bank/platform-workflows/.github/workflows/sign.yml@refs/heads/feature-x", sanType: "URI" },
+  { id: "wf-feature-caller", label: "payments/api — its own feature branch calls the central sign.yml@main", signed: false, format: "none",
+    issuer: "https://token.actions.githubusercontent.com/example-bank",
+    san: "https://github.com/example-bank/platform-workflows/.github/workflows/sign.yml@refs/heads/main", sanType: "URI",
+    never: "Never signed. The SAN would match (it names the reusable workflow, sign.yml@main, whatever branch called it), so the policy alone cannot stop this case. sign.yml's guard does: it fails unless the caller's github.ref is main or a v* tag, before any certificate is requested. The caller's branch is recorded only in the certificate's Source Repository Ref (and legacy GitHub Workflow Ref) extensions." },
+  { id: "wf-other", label: "A workflow in someone else's GitHub organisation", signed: true, format: "bundle",
+    issuer: "https://token.actions.githubusercontent.com",
+    san: "https://github.com/someone-else/tool/.github/workflows/build.yml@refs/heads/main", sanType: "URI" },
+  { id: "alice", label: "demo/hello — signed by alice in the laptop lab", signed: true, format: "bundle",
+    issuer: "https://keycloak.sigstore.local/realms/sigstore", san: "alice@sigstore.local", sanType: "email" },
+  { id: "ci-legacy", label: "platform/agent — Keycloak CI identity, legacy .sig format too", signed: true, format: "both",
+    issuer: "https://keycloak.example-bank.com/realms/sigstore", san: "platform-ci@example-bank.com", sanType: "email" },
+  { id: "unsigned", label: "An unsigned copy of the same image", signed: false, format: "none", issuer: "", san: "", sanType: "" },
+];
+
+const SIM_PRESETS = {
+  enterprise: { issuer: "https://token.actions.githubusercontent.com/example-bank",
+    regex: "^https://github\\.com/example-bank/platform-workflows/\\.github/workflows/sign\\.yml@refs/heads/main$" },
+  lab: { issuer: "https://keycloak.sigstore.local/realms/sigstore", regex: "^[A-Za-z0-9._%+-]+@sigstore\\.local$" },
+  openshift: { issuer: "https://keycloak.example-bank.com/realms/sigstore", email: "platform-ci@example-bank.com" },
+};
+
+QUIZ.policy = [
+  { q: "What does failurePolicy: Fail mean for the signature policy?",
+    a: ["Failed Pods are retried", "If the Kyverno webhook is unreachable, Pods are rejected", "Unsigned Pods are logged only", "Kyverno restarts on failure"], c: 1,
+    why: "Fail-closed. Pair it with Kyverno HA and namespace exclusions for system components." },
+  { q: "Why does the Kyverno policy in this kit need a tuf block?",
+    a: ["For performance", "Kyverno 1.19 bootstraps keyless trust from TUF; without a private mirror it tries the public Sigstore CDN and fails offline", "To sign images", "It is optional decoration"], c: 1,
+    why: "This was found by testing: the first policy version failed with 'failed to initialize TUF client (mirror=tuf-repo-cdn.sigstore.dev)'." },
+  { q: "Can OpenShift's native ClusterImagePolicy require 'built by example-bank workflows on main'?",
+    a: ["Yes, with a regex", "No: it matches only an exact signed e-mail, and CRI-O reads only legacy sha256-<digest>.sig signatures", "Yes, if you use a TUF mirror", "Only on OpenShift 5"], c: 1,
+    why: "Checked in openshift/api and containers/container-libs source. The enterprise design uses Kyverno on OpenShift too." },
+  { q: "What does the kit's Gatekeeper constraint enforce?",
+    a: ["Signature verification", "Images from the approved registry, pinned by digest", "Resource limits", "Network policies"], c: 1,
+    why: "Gatekeeper cannot verify cosign signatures on its own; Kyverno does that part." },
+  { q: "What is the safe way to switch on enforcement in an existing cluster?",
+    a: ["Deny everywhere at once", "Audit first, fix violations, then Deny tier by tier with a break-glass process", "Only enforce in production", "Disable Kyverno during deploys"], c: 1,
+    why: "Policy reports from Audit mode show exactly which workloads would break." },
+];
+
+/* ---------------- Module 8: enterprise ---------------- */
+const ENT_ZONES = [
+  { id: "z-pki", title: "Corporate PKI (on-prem)", items: [
+      ["Offline root CA", "Your existing offline root. At a recorded ceremony it signs two certificate requests: the Sigstore code-signing intermediate and the Timestamp Authority certificate."],
+      ["AD CS issuing CAs", "Unchanged. Usually capped at pathlen 0, so they cannot issue another CA; that is why the Sigstore intermediate sits directly under the root."],
+      ["AWS Private CA subordinate", "Signed once by the root. cert-manager's AWS Private CA issuer renews every TLS certificate in the Sigstore platform automatically."],
+    ] },
+  { id: "z-sec", title: "AWS security account", items: [
+      ["KMS: Fulcio CA key", "ECC_NIST_P384, SIGN_VERIFY, non-exportable, multi-Region for DR. The CSR is built from this key; Fulcio runs with kmsca."],
+      ["KMS: Rekor and TSA keys", "Rekor signs checkpoints with an awskms:// key; the Timestamp Authority uses the kms signer with your CA's chain."],
+      ["CloudTrail", "Every Sign call on these keys is logged and alarmed on unexpected callers."],
+    ] },
+  { id: "z-plat", title: "Sigstore shared-services account", items: [
+      ["EKS (3 AZs)", "Fulcio, Rekor, CT log, Trillian, TSA, Keycloak and the TUF publisher. Pods reach KMS through IRSA; no static credentials."],
+      ["Aurora MySQL + PostgreSQL", "MySQL holds the Trillian trees (the transparency history); PostgreSQL holds Keycloak. Global Database to the DR Region."],
+      ["S3 TUF repository", "Static, signed trust metadata. Replicated to Azure Blob and on-prem for clusters outside AWS."],
+      ["Private endpoints only", "Signing endpoints are reachable over Transit Gateway, Direct Connect and ExpressRoute. Nothing is public."],
+    ] },
+  { id: "z-id", title: "Identity", items: [
+      ["GitHub Enterprise Cloud", "Pipelines sign with workflow identities. Fulcio trusts only https://token.actions.githubusercontent.com/<your-enterprise-slug>, so other GitHub customers cannot get certificates."],
+      ["Self-hosted runners in AWS", "Actions Runner Controller in a VPC, chosen so signing runs on the private network next to Fulcio and Rekor. (GitHub-hosted runners with Azure private networking are possible but add an Azure network path to every signature.)"],
+      ["Keycloak broker", "One issuer for people. Entra ID and AD FS are federated in; brokered users are marked e-mail verified."],
+    ] },
+  { id: "z-cons", title: "Consumer clusters", items: [
+      ["EKS and AKS", "Kyverno ImageValidatingPolicy with trust from the nearest TUF replica."],
+      ["OpenShift", "Kyverno as the enforcer (native ClusterImagePolicy cannot match workflow identities). Native policy optional as an extra layer for e-mail-signed platform images."],
+      ["On-prem Kubernetes", "Same Kyverno policy; TUF and registry replicas on-prem. Verification works with no connection to AWS."],
+    ] },
+];
+
+const TRACE = [
+  "A developer merges to main in example-bank/payments-api on GitHub Enterprise Cloud.",
+  "The release workflow builds the image and calls the central sign.yml, which runs on a self-hosted runner in AWS and requests an OIDC token from GitHub.",
+  "cosign sends the token to Fulcio. Fulcio checks it against the enterprise-unique issuer and issues a certificate whose SAN is the sign.yml workflow URI; the calling repository and branch go into extensions.",
+  "Fulcio's CA key never leaves AWS KMS: the certificate is signed by a KMS Sign call, logged in CloudTrail.",
+  "The CT log returns an SCT; Rekor records the signature and returns a KMS-signed checkpoint.",
+  "The image and its bundle land in ECR; the promote workflow copies both to ACR with oras cp -r and verifies the copy.",
+  "Kyverno on AKS fetches trusted_root.json from the Azure Blob TUF replica and verifies the bundle offline.",
+  "The team policy for the payments namespace also requires githubWorkflowRepository = example-bank/payments-api and ref main. The Pod starts.",
+];
+
+QUIZ.enterprise = [
+  { q: "Where does Fulcio's issuing CA key live in production?",
+    a: ["A Kubernetes Secret", "AWS KMS, non-exportable; your offline root signs its certificate request at a ceremony", "On the PKI team's laptop", "In GitHub secrets"], c: 1,
+    why: "Fulcio's kmsca backend signs certificates through KMS. The key cannot be copied out." },
+  { q: "Why does the Sigstore intermediate sit directly under the offline root rather than under an AD CS issuing CA?",
+    a: ["AD CS cannot sign EC keys", "Issuing CAs are normally path-length 0, so they cannot issue another CA; it also keeps code-signing separate from the Windows hierarchy", "Fulcio requires a 2-level chain", "Because of licensing"], c: 1,
+    why: "If your AD CS issuing CA does allow pathlen 1, it is still cleaner to keep code-signing trust separate." },
+  { q: "Which issuer should Fulcio trust for GitHub Enterprise Cloud?",
+    a: ["https://github.com", "https://token.actions.githubusercontent.com (shared by all GitHub customers)", "https://token.actions.githubusercontent.com/<your-enterprise-slug>, after enabling the enterprise-unique issuer", "Any GitHub URL"], c: 2,
+    why: "With the shared issuer, any GitHub customer's workflow could obtain a certificate from your CA. The unique issuer limits it to your enterprise." },
+  { q: "What does an AKS or OpenShift cluster need in order to verify signatures?",
+    a: ["A live connection to Fulcio and Rekor in AWS", "Access to its registry and a replica of the TUF repository", "AWS IAM credentials", "Nothing"], c: 1,
+    why: "Verification is offline. Only signing needs the central services." },
+  { q: "Why are the GitHub Actions runners self-hosted inside AWS?",
+    a: ["They are cheaper", "Fulcio, Rekor and the TSA are private endpoints that GitHub-hosted runners on the internet cannot reach", "GitHub requires it", "For GPU access"], c: 1,
+    why: "Self-hosted runners (Actions Runner Controller) reach the private endpoints over the VPC network." },
+];
+
+/* ---------------- Module 9: troubleshooting drills ---------------- */
+const DRILLS = [
+  { symptom: "git commit fails with only 'error: gpg failed to sign the data'. GITSIGN_LOG shows 'invalid header field value for \"Authorization\"'.",
+    a: ["Keycloak is down", "The token file for the filesystem provider ends with a newline", "The Fulcio CA expired", "git is too old"], c: 1,
+    fix: "gitsign sends the file verbatim as the bearer token. Write it with printf '%s' \"$TOKEN\" > /var/run/sigstore/cosign/oidc-token. Always start with GITSIGN_LOG=/tmp/gitsign.log: git hides gitsign's real error." },
+  { symptom: "Pods are stuck in ImagePullBackOff with 'failed to resolve reference \"ghcr.io/sigstore/fulcio…\"'.",
+    a: ["Fulcio crashed", "The kind node cannot reach the offline mirror", "The image is unsigned", "Keycloak is down"], c: 1,
+    fix: "Check docker ps | grep sigstore-mirror, then docker network connect kind sigstore-mirror. Test from the node: docker exec sigstore-control-plane curl -s http://sigstore-mirror:5000/v2/" },
+  { symptom: "cosign sign fails with 'error obtaining token … unsupported issuer'.",
+    a: ["The token's iss does not exactly match the IssuerURL in Fulcio's config", "Rekor is full", "The image tag is wrong", "TUF expired"], c: 0,
+    fix: "Compare the token's iss (scripts/get-token.sh user, decode the middle part) with curl …/api/v2/configuration. Usually KC_HOSTNAME or a trailing slash." },
+  { symptom: "Fulcio logs 'email_verified claim was false'.",
+    a: ["Wrong audience", "The user's e-mail is not verified in Keycloak", "CT log down", "Clock skew"], c: 1,
+    fix: "Keycloak admin console → Users → set Email verified ON. For brokered users, add a mapper that sets it for trusted IdPs." },
+  { symptom: "Kyverno denies a correctly signed image: 'failed to initialize TUF client (mirror=\"https://tuf-repo-cdn.sigstore.dev\")'.",
+    a: ["The image is unsigned", "The policy has no tuf block, so Kyverno tries the public Sigstore CDN", "Rekor is unreachable", "Wrong registry"], c: 1,
+    fix: "Re-render with scripts/13-deploy-policy.sh, which adds tuf.mirror and tuf.root.data. Also confirm Kyverno trusts the TLS root (global.caCertificates)." },
+  { symptom: "cosign verify fails with '… could not verify SCT …' right after you redeployed the CT log.",
+    a: ["The CT log now signs with a different key than trusted_root.json lists", "The image digest changed", "Keycloak rotated keys", "Docker cache"], c: 0,
+    fix: "Compare kubectl -n ctlog-system get secret ctlog-public-key with pki/ctlog/ctlog.pub. Re-run 08 with the original key Secret, then 09." },
+  { symptom: "After a laptop reboot, new Pods using registry.sigstore.local images fail to pull, but platform Pods are fine.",
+    a: ["The registry lost its data", "Docker rewrote the node's /etc/hosts, so containerd can no longer resolve registry.sigstore.local", "Kyverno is blocking them", "The TLS certificate expired"], c: 1,
+    fix: "Run scripts/fix-node-dns.sh. verify-stack.sh flags this as 'node /etc/hosts entry'." },
+];
+
+/* Signing-flow diagram. Node and edge ids are referenced by FLOW_STEPS. */
+const FLOW_SVG = `
+<svg viewBox="0 0 640 380" role="img" aria-labelledby="flowtitle">
+  <title id="flowtitle">Components involved in one keyless signature</title>
+  <rect class="zone" x="345" y="10" width="288" height="226" rx="10"/>
+  <text class="zone-label" x="355" y="226">PRIVATE SIGSTORE SERVICES</text>
+  <path class="edge" id="e-login" d="M130 182 C 168 182, 165 53, 200 53"/>
+  <path class="edge" id="e-cert" d="M130 190 C 250 190, 300 74, 370 68"/>
+  <path class="edge" id="e-jwks" d="M370 42 L320 42"/>
+  <path class="edge" id="e-ct" d="M480 53 L515 53"/>
+  <path class="edge" id="e-ct-tr" d="M570 76 L570 170"/>
+  <path class="edge" id="e-rekor" d="M130 200 L370 196"/>
+  <path class="edge" id="e-rk-tr" d="M480 193 L515 193"/>
+  <path class="edge" id="e-store" d="M75 222 C 75 300, 130 323, 200 323"/>
+  <path class="edge" id="e-kyv-reg" d="M370 323 L320 323"/>
+  <path class="edge" id="e-kyv-tuf" d="M480 323 L515 323"/>
+  <g class="node" id="dev"><rect x="20" y="166" width="110" height="56" rx="8"/><text x="75" y="190" text-anchor="middle">Developer / CI</text><text x="75" y="208" text-anchor="middle">cosign</text></g>
+  <g class="node" id="keycloak"><rect x="200" y="30" width="120" height="46" rx="8"/><text x="260" y="58" text-anchor="middle">Keycloak (OIDC)</text></g>
+  <g class="node" id="fulcio"><rect x="370" y="30" width="110" height="46" rx="8"/><text x="425" y="58" text-anchor="middle">Fulcio CA</text></g>
+  <g class="node" id="ct"><rect x="515" y="30" width="110" height="46" rx="8"/><text x="570" y="58" text-anchor="middle">CT log</text></g>
+  <g class="node" id="rekor"><rect x="370" y="170" width="110" height="46" rx="8"/><text x="425" y="198" text-anchor="middle">Rekor</text></g>
+  <g class="node" id="trillian"><rect x="515" y="170" width="110" height="46" rx="8"/><text x="570" y="190" text-anchor="middle">Trillian</text><text x="570" y="206" text-anchor="middle">+ MySQL</text></g>
+  <g class="node" id="registry"><rect x="200" y="300" width="120" height="46" rx="8"/><text x="260" y="328" text-anchor="middle">OCI registry</text></g>
+  <g class="node" id="kyverno"><rect x="370" y="300" width="110" height="46" rx="8"/><text x="425" y="328" text-anchor="middle">Kyverno</text></g>
+  <g class="node" id="tuf"><rect x="515" y="300" width="110" height="46" rx="8"/><text x="570" y="328" text-anchor="middle">TUF mirror</text></g>
+</svg>`;
+
+const SEAL_SVG = `<svg class="seal" viewBox="0 0 40 40" aria-hidden="true">
+  <circle cx="20" cy="20" r="18" fill="var(--accent)"/>
+  <circle cx="20" cy="20" r="13" fill="none" stroke="var(--surface)" stroke-width="1.5" stroke-dasharray="2 2.6"/>
+  <path d="M13.5 20.5 L18 25 L27 15.5" fill="none" stroke="var(--surface)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/* Sigstore Academy — vanilla JS, no dependencies. Progress is kept per
+   browser in localStorage (wrapped in try/catch; the page works without it). */
+(function () {
+  "use strict";
+  const KEY = "sigstore-academy-v1";
+  const $ = (sel, el) => (el || document).querySelector(sel);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const TOOLS = TOOLS_DATA.categories.flatMap((c) => c.tools.map((t) => ({ ...t, group: c.name, gid: c.id })));
+
+  let state = { quiz: {}, lab: {}, seen: {}, last: "home" };
+  try { const raw = localStorage.getItem(KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) { /* storage unavailable */ }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+
+  /* ---------- progress ---------- */
+  function quizScore(id) {
+    const qs = id === "trouble" ? DRILLS : QUIZ[id] || [];
+    const ans = state.quiz[id] || {};
+    let right = 0, answered = 0;
+    qs.forEach((q, i) => { if (ans[i] !== undefined) { answered++; if (ans[i] === q.c) right++; } });
+    return { right, answered, total: qs.length };
+  }
+  function labDone(steps) { return steps.every((s) => state.lab[s.id]); }
+  function moduleDone(id) {
+    const s = quizScore(id);
+    if (id === "trouble") return s.answered === s.total;
+    const passed = s.answered === s.total && s.right >= s.total - 1;
+    if (id === "install") return passed && labDone(INSTALL_STEPS);
+    if (id === "sign") return passed && labDone(SIGN_STEPS);
+    return passed;
+  }
+  function overall() { return MODULES.filter((m) => moduleDone(m.id)).length; }
+
+  /* ---------- shell ---------- */
+  const app = $("#app");
+  app.className = "app";
+  app.innerHTML = `
+    <aside class="rail">
+      <div class="brand">${SEAL_SVG}<div><h1>Sigstore Academy</h1><p>Private, offline keyless signing</p></div></div>
+      <div class="overall" aria-live="polite"><span id="ovtext"></span><div class="bar"><i id="ovbar"></i></div></div>
+      <nav aria-label="Modules"><ul class="nav" id="nav"></ul></nav>
+      <div class="rail-foot">
+        <span>Progress is saved in this browser only.</span>
+        <button class="linkbtn" id="reset" type="button">Reset all progress</button>
+        <span id="resetconfirm" hidden>Click again to confirm.</span>
+      </div>
+    </aside>
+    <main><div class="wrap" id="view"></div></main>`;
+
+  let armed = false;
+  $("#reset").addEventListener("click", () => {
+    if (!armed) { armed = true; $("#resetconfirm").hidden = false; setTimeout(() => { armed = false; $("#resetconfirm").hidden = true; }, 4000); return; }
+    state = { quiz: {}, lab: {}, seen: {}, last: "home" }; save(); armed = false; $("#resetconfirm").hidden = true; go("home");
+  });
+
+  function renderNav(current) {
+    const items = [{ id: "home", n: "★", title: "Start here", kind: "" }].concat(MODULES);
+    $("#nav").innerHTML = items.map((m) => {
+      const done = m.id !== "home" && moduleDone(m.id);
+      return `<li class="${done ? "done" : ""}"><button type="button" data-go="${m.id}" ${m.id === current ? 'aria-current="page"' : ""}>
+        <span class="num">${done ? "✓" : esc(m.n)}</span><span>${esc(m.title)}</span><span class="kind">${esc(m.kind)}</span></button></li>`;
+    }).join("");
+    const d = overall();
+    $("#ovtext").textContent = `${d} of ${MODULES.length} modules complete`;
+    $("#ovbar").style.width = (100 * d / MODULES.length) + "%";
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-go]");
+    if (b) { go(b.dataset.go); }
+  });
+
+  function go(id) {
+    if (id !== "home" && !MODULES.some((m) => m.id === id)) id = "home";
+    state.last = id; save();
+    renderNav(id);
+    const view = $("#view");
+    view.innerHTML = "";
+    (RENDER[id] || RENDER.home)(view);
+    window.scrollTo({ top: 0 });
+    const h = $("h2", view); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+  }
+
+  function header(m) {
+    const s = quizScore(m.id);
+    const done = moduleDone(m.id);
+    return `<header class="head"><div class="eyebrow">Module ${m.n} · ${esc(m.kind)}</div><h2>${esc(m.title)}</h2><p>${esc(m.summary)}</p>
+      <div class="meta"><span class="chip">${m.minutes} min</span>${done ? '<span class="chip ok">Complete</span>' : s.answered ? `<span class="chip amber">${s.right}/${s.total} correct so far</span>` : ""}</div></header>`;
+  }
+  function pager(id) {
+    const i = MODULES.findIndex((m) => m.id === id);
+    const prev = i > 0 ? MODULES[i - 1] : null, next = i < MODULES.length - 1 ? MODULES[i + 1] : null;
+    return `<nav class="pager" aria-label="Module navigation">
+      ${prev ? `<button class="btn ghost" type="button" data-go="${prev.id}">← ${esc(prev.title)}</button>` : `<button class="btn ghost" type="button" data-go="home">← Start here</button>`}
+      ${next ? `<button class="btn" type="button" data-go="${next.id}">${esc(next.title)} →</button>` : `<button class="btn" type="button" data-go="home">Back to overview</button>`}</nav>`;
+  }
+  function el(html) { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstElementChild; }
+
+  /* ---------- reusable: code block with copy ---------- */
+  function codeBlock(text, label, expect) {
+    const box = el(`<div class="code ${expect ? "expect" : ""}">${label ? `<div class="label">${esc(label)}</div>` : ""}<pre><code></code></pre>${expect ? "" : '<button type="button" class="copy">Copy</button>'}</div>`);
+    $("code", box).textContent = text;
+    const btn = $(".copy", box);
+    if (btn) btn.addEventListener("click", () => {
+      const done = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy"), 1500); };
+      const fallback = () => { const r = document.createRange(); r.selectNodeContents($("code", box)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Selected — press Ctrl+C"; };
+      try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+    });
+    return box;
+  }
+
+  /* ---------- reusable: quiz ---------- */
+  function quiz(id, questions, title, drill) {
+    const wrap = el(`<section class="quiz" aria-labelledby="qz-${id}"><h3 id="qz-${id}">${esc(title)}</h3><div class="score" aria-live="polite"></div></section>`);
+    const ans = (state.quiz[id] = state.quiz[id] || {});
+    const scoreEl = $(".score", wrap);
+    function updateScore() {
+      const s = quizScore(id);
+      scoreEl.textContent = s.answered ? `${s.right} of ${s.total} correct${s.answered < s.total ? ` · ${s.total - s.answered} to go` : ""}` : `${s.total} questions. Your answers are checked as you pick them.`;
+      renderNav(id);
+    }
+    questions.forEach((q, i) => {
+      const box = el(`<div class="q ${drill ? "drill" : ""}"><fieldset><legend>${drill ? "" : `${i + 1}. `}${esc(drill ? "What is the most likely cause?" : q.q)}</legend></fieldset></div>`);
+      const fs = $("fieldset", box);
+      if (drill) fs.insertBefore(el(`<div class="symptom">${esc(q.symptom)}</div>`), fs.firstChild.nextSibling);
+      q.a.forEach((opt, j) => {
+        const lab = el(`<label class="opt"><input type="radio" name="${id}-${i}" id="${id}-${i}-${j}" value="${j}"><span>${esc(opt)}</span></label>`);
+        fs.appendChild(lab);
+      });
+      const why = el(`<div class="why" hidden></div>`);
+      fs.appendChild(why);
+      function show() {
+        const pick = ans[i];
+        fs.querySelectorAll("input").forEach((inp) => { inp.disabled = pick !== undefined; inp.checked = Number(inp.value) === pick; });
+        fs.querySelectorAll(".opt").forEach((o, j) => { o.classList.toggle("correct", pick !== undefined && j === q.c); o.classList.toggle("incorrect", pick !== undefined && j === pick && j !== q.c); });
+        if (pick !== undefined) {
+          why.hidden = false;
+          why.innerHTML = `<b>${pick === q.c ? "Correct." : "Not quite."}</b> ${esc(drill ? q.fix : q.why)}`;
+        } else why.hidden = true;
+      }
+      fs.addEventListener("change", (e) => { if (e.target.name === `${id}-${i}`) { ans[i] = Number(e.target.value); save(); show(); updateScore(); } });
+      show();
+      wrap.appendChild(box);
+    });
+    const reset = el(`<div><button class="btn ghost" type="button">Reset these answers</button></div>`);
+    $("button", reset).addEventListener("click", () => { state.quiz[id] = {}; save(); go(id); });
+    wrap.appendChild(reset);
+    updateScore();
+    return wrap;
+  }
+
+  /* ---------- reusable: lab steps ---------- */
+  function labSteps(steps) {
+    const wrap = el(`<div class="lab"></div>`);
+    steps.forEach((s) => {
+      const card = el(`<article class="labstep ${state.lab[s.id] ? "done" : ""}"><header>${s.n ? `<span class="sn">${esc(s.n)}</span>` : ""}<h4>${esc(s.title)}</h4>${s.where ? `<span class="where ${s.where}">${s.where === "online" ? "online machine" : "offline laptop"}</span>` : ""}</header></article>`);
+      card.appendChild(codeBlock(s.cmd, "Run"));
+      card.appendChild(codeBlock(s.expect, "You should see", true));
+      if (s.note) card.appendChild(el(`<p class="tip">${esc(s.note)}</p>`));
+      const ck = el(`<label class="check"><input type="checkbox" id="lab-${s.id}"> Done: my output matched</label>`);
+      const box = $("input", ck); box.checked = !!state.lab[s.id];
+      box.addEventListener("change", () => { state.lab[s.id] = box.checked; card.classList.toggle("done", box.checked); save(); renderNav(state.last); });
+      card.appendChild(ck);
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
+  /* ================= views ================= */
+  const RENDER = {};
+
+  RENDER.home = (v) => {
+    v.appendChild(el(`<header class="head"><div class="eyebrow">Self-paced course</div><h2>Learn private Sigstore by doing it</h2>
+      <p>Nine modules take you from "what is keyless signing" to running your own offline stack and designing it for a whole organisation on AWS. Concepts come with interactive diagrams; labs come with the exact commands and the output you should see.</p>
+      <div class="meta"><span class="chip">About 2.5 hours</span><span class="chip">35 questions + 6 drills</span><span class="chip">Labs use the sigstore-offline kit</span></div></header>`));
+    const cards = el(`<div class="cards"></div>`);
+    MODULES.forEach((m) => {
+      const s = quizScore(m.id), done = moduleDone(m.id);
+      cards.appendChild(el(`<button type="button" class="mcard" data-go="${m.id}"><span class="mn">Module ${m.n} · ${esc(m.kind)} · ${m.minutes} min</span><span class="mt">${esc(m.title)}</span><span class="ms">${esc(m.summary)}</span>
+        ${done ? '<span class="mst">✓ Complete</span>' : s.answered ? `<span class="mst" style="color:var(--amber)">In progress · ${s.right}/${s.total}</span>` : ""}</button>`));
+    });
+    v.appendChild(cards);
+    v.appendChild(el(`<section class="prose"><h3>How this course works</h3>
+      <p>A module is complete when you answer all its questions with at most one wrong. The two labs also need every step ticked. Wrong answers explain why, so guessing is a fine way to learn.</p>
+      <p>Labs 4 and 5 assume the <code>sigstore-offline</code> kit on a Linux or WSL2 laptop with Docker. Everything else works in the browser alone.</p></section>`));
+    if (state.last && state.last !== "home") {
+      const m = MODULES.find((x) => x.id === state.last);
+      if (m) v.appendChild(el(`<div><button class="btn" type="button" data-go="${m.id}">Continue: ${esc(m.title)} →</button></div>`));
+    }
+  };
+
+  /* ---- Module 1 ---- */
+  RENDER.flow = (v) => {
+    const m = MODULES.find((x) => x.id === "flow");
+    v.appendChild(el(header(m)));
+    const sec = el(`<section><h3>One signature, eight steps</h3><div class="steps" role="group" aria-label="Steps"></div>
+      <div class="flow"><div class="panel diagram">${FLOW_SVG}</div><div class="panel stepcard" aria-live="polite"></div></div></section>`);
+    v.appendChild(sec);
+    const stepsBar = $(".steps", sec), card = $(".stepcard", sec), svg = $("svg", sec);
+    let cur = 0;
+    FLOW_STEPS.forEach((s, i) => { const b = el(`<button type="button" aria-pressed="false">${i + 1}. ${esc(s.title)}</button>`); b.addEventListener("click", () => show(i)); stepsBar.appendChild(b); });
+    function show(i) {
+      cur = i; const s = FLOW_STEPS[i];
+      stepsBar.querySelectorAll("button").forEach((b, j) => b.setAttribute("aria-pressed", String(j === i)));
+      svg.querySelectorAll(".node").forEach((n) => n.classList.toggle("on", s.nodes.includes(n.id)));
+      svg.querySelectorAll(".edge").forEach((e) => e.classList.toggle("on", s.edges.includes(e.id)));
+      card.innerHTML = `<h4>${i + 1}. ${esc(s.title)}</h4><div class="tool">${esc(s.tool)}</div><p>${s.body}</p><p class="detail">${s.detail}</p>
+        <div class="stepnav"><button class="btn ghost" type="button" ${i === 0 ? "disabled" : ""} data-d="-1">Previous</button><button class="btn" type="button" ${i === FLOW_STEPS.length - 1 ? "disabled" : ""} data-d="1">Next step</button></div>`;
+      card.querySelectorAll("[data-d]").forEach((b) => b.addEventListener("click", () => show(cur + Number(b.dataset.d))));
+    }
+    show(0);
+    v.appendChild(el(`<section class="prose"><h3>Why "keyless" is safer</h3>
+      <p>Classic signing needs a long-lived private key that someone must protect, rotate and eventually revoke. Keyless signing replaces that key with an identity you already manage: a person's corporate login or a CI pipeline's workflow identity. The key that does the signing exists for a few seconds.</p>
+      <p>Trust then rests on three things you control: your CA (Fulcio), your transparency logs (CT log and Rekor) and your identity provider. A verifier checks all three using one file, <code>trusted_root.json</code>.</p></section>`));
+    v.appendChild(quiz("flow", QUIZ.flow, "Check your understanding"));
+    v.appendChild(el(pager("flow")));
+  };
+
+  /* ---- Module 2 ---- */
+  RENDER.tools = (v) => {
+    const m = MODULES.find((x) => x.id === "tools");
+    v.appendChild(el(header(m)));
+    const sec = el(`<section><h3>Tool explorer</h3><div class="panel" style="display:grid;gap:12px">
+      <input class="search" id="toolsearch" type="search" placeholder="Search tools, e.g. crane, CoreDNS, KMS" aria-label="Search tools">
+      <div class="filters" role="group" aria-label="Filter by group"></div>
+      <div class="chip" id="seen" style="justify-self:start"></div>
+      <div class="explorer"><div class="toollist" role="listbox" aria-label="Tools"></div><div class="tooldetail" aria-live="polite"></div></div></div></section>`);
+    v.appendChild(sec);
+    const filters = $(".filters", sec), list = $(".toollist", sec), detail = $(".tooldetail", sec), search = $("#toolsearch", sec);
+    let group = "all", selected = TOOLS[0].name;
+    const groups = [{ id: "all", name: "All" }].concat(TOOLS_DATA.categories.map((c) => ({ id: c.id, name: c.name })));
+    groups.forEach((g) => { const b = el(`<button type="button" aria-pressed="${g.id === group}">${esc(g.name)}</button>`); b.addEventListener("click", () => { group = g.id; filters.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); draw(); }); filters.appendChild(b); });
+    search.addEventListener("input", draw);
+    function draw() {
+      const q = search.value.trim().toLowerCase();
+      const items = TOOLS.filter((t) => (group === "all" || t.gid === group) && (!q || (t.name + " " + t.what + " " + t.why).toLowerCase().includes(q)));
+      list.innerHTML = items.length ? "" : `<p class="tip">No tool matches "${esc(q)}".</p>`;
+      items.forEach((t) => {
+        const b = el(`<button type="button" role="option" aria-selected="${t.name === selected}"><span class="tname">${state.seen[t.name] ? "✓ " : ""}${esc(t.name)}</span><span class="tgroup">${esc(t.group)}</span></button>`);
+        b.addEventListener("click", () => { selected = t.name; draw(); });
+        list.appendChild(b);
+      });
+      const t = TOOLS.find((x) => x.name === selected) || items[0];
+      if (!t) { detail.innerHTML = ""; return; }
+      state.seen[t.name] = true; save();
+      detail.innerHTML = `<div class="panel"><h4>${esc(t.name)}</h4><div class="ver">${esc(t.version)}</div><dl class="kv">
+        <dt>What it is</dt><dd>${esc(t.what)}</dd><dt>Why we use it</dt><dd>${esc(t.why)}</dd>
+        <dt>Without it</dt><dd class="breaks">${esc(BREAKS[t.name] || "Only used to build or test the kit. The running stack does not depend on it.")}</dd>
+        <dt>Used in</dt><dd>${esc(t.where)}</dd><dt>Offline source</dt><dd>${esc(t.offline)}</dd></dl></div>`;
+      if (t.cmd && t.cmd !== "—") detail.firstElementChild.appendChild(codeBlock(t.cmd, "Example"));
+      const n = Object.keys(state.seen).length;
+      $("#seen", sec).textContent = `You have opened ${Math.min(n, TOOLS.length)} of ${TOOLS.length} tools`;
+    }
+    draw();
+    v.appendChild(quiz("tools", QUIZ.tools, "Check your understanding"));
+    v.appendChild(el(pager("tools")));
+  };
+
+  /* ---- Module 3 ---- */
+  RENDER.pki = (v) => {
+    const m = MODULES.find((x) => x.id === "pki");
+    v.appendChild(el(header(m)));
+    v.appendChild(el(`<section class="prose"><h3>Two hierarchies, three log keys, one trust root</h3>
+      <p>The TLS hierarchy protects connections. The code-signing hierarchy decides whose signatures count. The Rekor and CT keys sign the logs' evidence, and the TUF root controls how all of this reaches clients. Keeping them apart limits what any one leak can do.</p></section>`));
+    const sec = el(`<section><h3>Match each key to its job</h3><p class="prose" style="color:var(--muted);margin:0 0 12px">Pick the job for each key. Correct answers turn green and reveal the key's details.</p>
+      <div class="trees"></div><div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="chip" id="mscore"></span><button class="btn ghost" type="button" id="reveal">Show all answers</button></div></section>`);
+    v.appendChild(sec);
+    const trees = $(".trees", sec);
+    const order = ["j-rekor", "j-wildcard", "j-tuf", "j-ephemeral", "j-tlsroot", "j-ct", "j-fulciointer", "j-fulcioroot"];
+    const picks = state.quiz.pkimatch = state.quiz.pkimatch || {};
+    const cols = [["tls", "TLS (transport)"], ["cs", "Code signing"], ["logs", "Logs and distribution"]];
+    cols.forEach(([tid, name]) => {
+      const col = el(`<div class="tree"><h4>${esc(name)}</h4></div>`);
+      KEYS.filter((k) => k.tree === tid).forEach((k, idx) => {
+        const indent = (tid === "tls" || tid === "cs") && idx > 0;
+        const card = el(`<div class="keycard ${indent ? "indent" : ""}"><span class="kl">${esc(k.label)}</span>
+          <select id="match-${k.id}" aria-label="Job for ${esc(k.label)}"><option value="">Choose its job…</option>${order.map((j) => `<option value="${j}">${esc(JOBS.find((x) => x.id === j).text)}</option>`).join("")}</select><span class="ki" hidden>${esc(k.info)}</span></div>`);
+        const sel = $("select", card);
+        function mark() {
+          const p = picks[k.id]; sel.value = p || "";
+          card.classList.toggle("right", p === k.job); card.classList.toggle("wrong", !!p && p !== k.job);
+          $(".ki", card).hidden = p !== k.job;
+        }
+        sel.addEventListener("change", () => { picks[k.id] = sel.value; save(); mark(); score(); });
+        mark(); col.appendChild(card);
+      });
+      trees.appendChild(col);
+    });
+    function score() { const r = KEYS.filter((k) => picks[k.id] === k.job).length; $("#mscore", sec).textContent = `${r} of ${KEYS.length} matched`; }
+    $("#reveal", sec).addEventListener("click", () => { KEYS.forEach((k) => (picks[k.id] = k.job)); save(); go("pki"); });
+    score();
+    v.appendChild(el(`<div class="note">Fulcio's issuing certificate must carry <b>extendedKeyUsage = codeSigning</b>, and the chain file lists it first with the root last. Both were checked against Fulcio's source; getting either wrong stops Fulcio from starting.</div>`));
+    v.appendChild(quiz("pki", QUIZ.pki, "Check your understanding"));
+    v.appendChild(el(pager("pki")));
+  };
+
+  /* ---- Module 4 ---- */
+  RENDER.install = (v) => {
+    const m = MODULES.find((x) => x.id === "install");
+    v.appendChild(el(header(m)));
+    v.appendChild(el(`<section class="prose"><h3>Before you start</h3>
+      <p>You need Linux or Windows with WSL2, Docker with 8 GB of memory and 4 CPUs, and ports 80, 443, 5000 and 6443 free on 127.0.0.1. Work from the kit folder in a bash shell. Tick each step once your output matches; the shortcut <code>scripts/install-all.sh</code> runs them all.</p></section>`));
+    v.appendChild(labSteps(INSTALL_STEPS));
+    v.appendChild(quiz("install", QUIZ.install, "Check your understanding"));
+    v.appendChild(el(pager("install")));
+  };
+
+  /* ---- Module 5 ---- */
+  RENDER.sign = (v) => {
+    const m = MODULES.find((x) => x.id === "sign");
+    v.appendChild(el(header(m)));
+    v.appendChild(el(`<section class="prose"><h3>Set up your shell</h3></section>`));
+    v.appendChild(codeBlock('cd ~/sigstore-offline\nexport PATH="$PWD/bundle/bin:$PATH"\nsource out/cosign.env', "Run once per shell"));
+    v.appendChild(labSteps(SIGN_STEPS));
+    const sec = el(`<section><h3>Read a Rekor entry</h3><p class="prose" style="color:var(--muted);margin:0 0 12px">An entry from the kit's integration test, shortened. Click a field to see what it proves.</p>
+      <div class="anatomy"><div class="yaml" role="group" aria-label="Rekor entry fields"></div><div class="panel explain" aria-live="polite"><h4>Pick a field</h4><p>Each field on the left is part of the evidence a verifier checks.</p></div></div></section>`);
+    v.appendChild(sec);
+    const box = $(".yaml", sec), ex = $(".explain", sec);
+    box.appendChild(el(`<button type="button" tabindex="-1">{</button>`));
+    REKOR_FIELDS.forEach(([k, val, why], i) => {
+      const b = el(`<button type="button" class="has">  "${esc(k)}": ${esc(val)}${i < REKOR_FIELDS.length - 1 ? "," : ""}</button>`);
+      b.addEventListener("click", () => { box.querySelectorAll(".sel").forEach((x) => x.classList.remove("sel")); b.classList.add("sel"); ex.innerHTML = `<h4>${esc(k)}</h4><p>${esc(why)}</p>`; });
+      box.appendChild(b);
+    });
+    box.appendChild(el(`<button type="button" tabindex="-1">}</button>`));
+    v.appendChild(quiz("sign", QUIZ.sign, "Check your understanding"));
+    v.appendChild(el(pager("sign")));
+  };
+
+  /* ---- Module 6 ---- */
+  RENDER.gitsign = (v) => {
+    const m = MODULES.find((x) => x.id === "gitsign");
+    v.appendChild(el(header(m)));
+    v.appendChild(el(`<section class="prose"><h3>Same login, same CA, for your commits</h3>
+      <p>cosign signs images; <b>gitsign</b> signs git commits and tags with the same keyless flow. git calls gitsign instead of GPG, gitsign gets a 10-minute certificate from your private Fulcio after a Keycloak login, signs the commit with a throw-away key, and records it in your private Rekor. There is no key to create, store or revoke.</p>
+      <p>The stack from module 4 must be running and the TUF mirror published. Work from the kit folder.</p></section>`));
+    v.appendChild(labSteps(GITSIGN_STEPS));
+    v.appendChild(el(`<div class="note">In the enterprise design (enterprise/docs/11-gitsign.md) engineers sign through the Keycloak <code>staff</code> realm brokered from Entra ID or AD FS, and <code>verify-commits.yml</code> runs on every pull request, required by an organisation ruleset ("Require workflows to pass before merging", pinned to a central copy), so a pull request cannot edit the check away. GitHub's own badge stays "Unverified" because it only trusts public CAs.</div>`));
+    v.appendChild(quiz("gitsign", QUIZ.gitsign, "Check your understanding"));
+    v.appendChild(el(pager("gitsign")));
+  };
+
+  /* ---- Module 7 ---- */
+  RENDER.policy = (v) => {
+    const m = MODULES.find((x) => x.id === "policy");
+    v.appendChild(el(header(m)));
+    const an = el(`<section><h3>Anatomy of the policy</h3><div class="anatomy"><div class="yaml" role="group" aria-label="Kyverno policy lines"></div>
+      <div class="panel explain" aria-live="polite"><h4>Click a highlighted line</h4><p>Every line that changes behaviour has an explanation.</p></div></div></section>`);
+    v.appendChild(an);
+    const yb = $(".yaml", an), ex = $(".explain", an);
+    POLICY_LINES.forEach(([line, why]) => {
+      const b = el(`<button type="button" class="${why ? "has" : ""}" ${why ? "" : 'tabindex="-1"'}></button>`); b.textContent = line;
+      if (why) b.addEventListener("click", () => { yb.querySelectorAll(".sel").forEach((x) => x.classList.remove("sel")); b.classList.add("sel"); ex.innerHTML = `<h4>${esc(line.trim())}</h4><p>${esc(why)}</p>`; });
+      yb.appendChild(b);
+    });
+
+    const sim = el(`<section class="sim"><h3>Policy simulator</h3>
+      <p class="prose" style="color:var(--muted);margin:0">Seven images with real certificate identities. Change the policy and watch admission decisions change. Switch to OpenShift's native check to see why the enterprise design keeps Kyverno on OpenShift.</p>
+      <div class="panel" style="display:grid;gap:14px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><div class="seg" role="group" aria-label="Enforcer"><button type="button" data-mode="kyverno" aria-pressed="true">Kyverno</button><button type="button" data-mode="openshift" aria-pressed="false">OpenShift native</button></div>
+          <span class="ui" style="font-size:.82rem;color:var(--muted)">Presets:</span><button class="btn ghost" type="button" data-preset="enterprise">GitHub workflows</button><button class="btn ghost" type="button" data-preset="lab">Laptop lab</button></div>
+        <div class="simform" id="kyvform">
+          <label class="field wide">Issuer (exact match)<input id="sim-issuer" type="text" spellcheck="false"></label>
+          <label class="field wide">subjectRegExp<input id="sim-regex" type="text" spellcheck="false"></label>
+          <div class="field">Validation action<div class="seg" role="group" aria-label="Validation action"><button type="button" data-act="Deny" aria-pressed="true">Deny</button><button type="button" data-act="Audit" aria-pressed="false">Audit</button></div></div>
+          <div class="field" id="regexerr" style="color:var(--bad)" aria-live="polite"></div>
+        </div>
+        <div class="simform" id="osform" hidden>
+          <label class="field wide">fulcioSubject.oidcIssuer<input id="sim-osissuer" type="text" spellcheck="false"></label>
+          <label class="field wide">fulcioSubject.signedEmail<input id="sim-email" type="text" spellcheck="false"></label>
+        </div>
+      </div><div class="results" aria-live="polite"></div></section>`);
+    v.appendChild(sim);
+    let mode = "kyverno", act = "Deny";
+    const iss = $("#sim-issuer", sim), rx = $("#sim-regex", sim), osi = $("#sim-osissuer", sim), em = $("#sim-email", sim);
+    iss.value = SIM_PRESETS.enterprise.issuer; rx.value = SIM_PRESETS.enterprise.regex;
+    osi.value = SIM_PRESETS.openshift.issuer; em.value = SIM_PRESETS.openshift.email;
+    sim.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { mode = b.dataset.mode; sim.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); $("#kyvform", sim).hidden = mode !== "kyverno"; $("#osform", sim).hidden = mode !== "openshift"; run(); }));
+    sim.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => { act = b.dataset.act; sim.querySelectorAll("[data-act]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); run(); }));
+    sim.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => { const p = SIM_PRESETS[b.dataset.preset]; iss.value = p.issuer; rx.value = p.regex; if (mode !== "kyverno") sim.querySelector('[data-mode="kyverno"]').click(); else run(); }));
+    [iss, rx, osi, em].forEach((i) => i.addEventListener("input", run));
+    function run() {
+      const out = $(".results", sim); out.innerHTML = "";
+      let re = null; $("#regexerr", sim).textContent = "";
+      if (mode === "kyverno") { try { re = new RegExp(rx.value); } catch (e) { $("#regexerr", sim).textContent = "That regular expression does not parse: " + e.message; return; } }
+      SIM_IMAGES.forEach((img) => {
+        let ok, reason;
+        if (img.never) { ok = false; reason = img.never; }
+        else if (mode === "kyverno") {
+          if (!img.signed) { ok = false; reason = "No signatures found for this digest."; }
+          else if (img.issuer !== iss.value.trim()) { ok = false; reason = `Issuer mismatch: the certificate says ${img.issuer}.`; }
+          else if (!re.test(img.san)) { ok = false; reason = "The certificate identity does not match subjectRegExp."; }
+          else { ok = true; reason = "Chain, SCT and Rekor proof verified; identity and issuer match."; }
+        } else {
+          if (!img.signed) { ok = false; reason = "No signatures found."; }
+          else if (img.format === "bundle") { ok = false; reason = "CRI-O looks for a sha256-<digest>.sig tag and finds none: cosign v3 stores bundles as OCI referrers."; }
+          else if (img.sanType !== "email") { ok = false; reason = "The certificate has a URI identity; the native policy can match only signedEmail."; }
+          else if (img.issuer !== osi.value.trim()) { ok = false; reason = `oidcIssuer mismatch: the certificate says ${img.issuer}.`; }
+          else if (img.san !== em.value.trim()) { ok = false; reason = "signedEmail does not exactly match the certificate's e-mail."; }
+          else { ok = true; reason = "Legacy signature found; e-mail and issuer match exactly."; }
+        }
+        const verdict = ok ? "admit" : img.never ? "deny" : mode === "kyverno" && act === "Audit" ? "audit" : "deny";
+        const label = img.never ? "NO IMAGE" : verdict === "admit" ? "ADMIT" : verdict === "audit" ? "AUDIT" : "DENY";
+        const r = el(`<div class="result"><span class="verdict ${verdict}">${label}</span><div><div class="rl">${esc(img.label)}</div><div class="rs">${img.signed ? esc(img.san) : img.never ? "would carry " + esc(img.san) : "no certificate"}</div><div class="rr">${esc(reason)}${verdict === "audit" ? " Admitted, and reported as a policy violation." : ""}</div></div></div>`);
+        out.appendChild(r);
+      });
+    }
+    run();
+    v.appendChild(el(`<div class="note">OpenShift's native <code>ClusterImagePolicy</code> was checked against the openshift/api and containers/container-libs source in October 2026: <code>fulcioSubject</code> has only <code>oidcIssuer</code> and <code>signedEmail</code>, and CRI-O fetches signatures from the <code>sha256-&lt;digest&gt;.sig</code> tag. Use it as an extra layer for e-mail-signed images that are also signed in the legacy format, not as the main control.</div>`));
+    v.appendChild(quiz("policy", QUIZ.policy, "Check your understanding"));
+    v.appendChild(el(pager("policy")));
+  };
+
+  /* ---- Module 8 ---- */
+  RENDER.enterprise = (v) => {
+    const m = MODULES.find((x) => x.id === "enterprise");
+    v.appendChild(el(header(m)));
+    v.appendChild(el(`<section class="prose"><h3>Same design, production custody</h3>
+      <p>The laptop and production run the same services with the same trust model. Production changes three things: who holds the keys (AWS KMS, with your corporate root anchoring the chain), who signs (GitHub workflow identities and federated staff logins), and where verification happens (every cluster in every cloud, from a replicated trust root).</p></section>`));
+    const zs = el(`<section><h3>Explore the platform</h3><div class="zones"></div></section>`);
+    v.appendChild(zs);
+    ENT_ZONES.forEach((z) => {
+      const zone = el(`<div class="zone"><h4>${esc(z.title)}</h4></div>`);
+      z.items.forEach(([t, d]) => {
+        const b = el(`<button type="button" aria-expanded="false">${esc(t)}</button>`); const p = el(`<div class="zd" hidden>${esc(d)}</div>`);
+        b.addEventListener("click", () => { const open = b.getAttribute("aria-expanded") === "true"; b.setAttribute("aria-expanded", String(!open)); p.hidden = open; });
+        zone.appendChild(b); zone.appendChild(p);
+      });
+      $(".zones", zs).appendChild(zone);
+    });
+    const tr = el(`<section><h3>Trace one release to production</h3><div class="panel"><ol class="trace"></ol><div class="stepnav"><button class="btn ghost" type="button" id="trprev">Back</button><button class="btn" type="button" id="trnext">Next</button></div></div></section>`);
+    v.appendChild(tr);
+    const ol = $(".trace", tr); let k = 0;
+    TRACE.forEach((t) => ol.appendChild(el(`<li><span>${esc(t)}</span></li>`)));
+    function trace() { ol.querySelectorAll("li").forEach((li, i) => li.classList.toggle("on", i <= k)); $("#trprev", tr).disabled = k === 0; $("#trnext", tr).disabled = k === TRACE.length - 1; }
+    $("#trprev", tr).addEventListener("click", () => { k = Math.max(0, k - 1); trace(); });
+    $("#trnext", tr).addEventListener("click", () => { k = Math.min(TRACE.length - 1, k + 1); trace(); });
+    trace();
+    v.appendChild(quiz("enterprise", QUIZ.enterprise, "Check your understanding"));
+    v.appendChild(el(pager("enterprise")));
+  };
+
+  /* ---- Module 9 ---- */
+  RENDER.trouble = (v) => {
+    const m = MODULES.find((x) => x.id === "trouble");
+    v.appendChild(el(header(m)));
+    v.appendChild(el(`<section class="prose"><p>Each drill is a real symptom from building and testing this kit. Pick the most likely cause to see the fix. The full list is in <code>docs/08-troubleshooting.md</code>.</p></section>`));
+    v.appendChild(quiz("trouble", DRILLS, "Six drills", true));
+    v.appendChild(el(pager("trouble")));
+  };
+
+  /* ---------- start ---------- */
+  const fromHash = (location.hash || "").replace(/^#/, "");
+  go(MODULES.some((m) => m.id === fromHash) ? fromHash : state.last || "home");
+})();
+
+</script>
+</body>
+</html>

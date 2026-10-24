@@ -1,0 +1,24 @@
+# Copy to terraform.tfvars and replace the placeholders (00-overview.md §4).
+terraform_role_arn     = "arn:aws:iam::111111111111:role/sigstore-security-terraform"
+break_glass_role_arns  = ["arn:aws:iam::111111111111:role/sigstore-break-glass"]
+ceremony_operator_arns = [
+  "arn:aws:iam::111111111111:role/aws-reserved/sso.amazonaws.com/me-central-1/AWSReservedSSO_SigstoreCeremony_0123456789abcdef",
+]
+
+fulcio_role_arns = [
+  "arn:aws:iam::222222222222:role/sigstore-prod-fulcio",
+  "arn:aws:iam::222222222222:role/sigstore-dr-fulcio",
+]
+rekor_role_arns = [
+  "arn:aws:iam::222222222222:role/sigstore-prod-rekor",
+  "arn:aws:iam::222222222222:role/sigstore-dr-rekor",
+]
+tsa_role_arns = [
+  "arn:aws:iam::222222222222:role/sigstore-prod-tsa",
+  "arn:aws:iam::222222222222:role/sigstore-dr-tsa",
+]
+
+github_oidc_provider_arn = "arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com/example-bank"
+tuf_bucket_name          = "example-bank-sigstore-tuf"
+crl_bucket_name          = "example-bank-sigstore-tls-crl"
+pca_share_with           = ["222222222222"]

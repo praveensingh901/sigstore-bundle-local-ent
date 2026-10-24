@@ -1,0 +1,65 @@
+# Baseline: every image from an approved registry is signed by one of the two
+# central reusable workflows, verified only through the private TUF root.
+# Namespaces that opt in to staff signatures are covered by
+# staff-signed-optin.yaml instead (that policy accepts these identities too).
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: baseline-signed-by-central-workflow
+  annotations:
+    policies.kyverno.io/title: Signed by an example-bank central workflow
+    policies.kyverno.io/severity: high
+spec:
+  validationActions: [Audit]          # Deny from rollout phase 4
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE", "UPDATE"]
+    namespaceSelector:
+      matchExpressions:
+        - key: sigstore.example-bank.com/enforce
+          operator: NotIn
+          values: ["off"]
+        - key: sigstore.example-bank.com/allow-staff-signatures
+          operator: NotIn
+          values: ["true"]
+  matchImageReferences:               # platform overlays replace this list
+    - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/*"
+    - glob: "examplebank.azurecr.io/*"
+    - glob: "harbor.corp.example/*"
+  credentials:
+    providers: [default]              # overlays: amazon (EKS), azure (AKS)
+  attestors:
+    - name: centralWorkflows
+      cosign:
+        keyless:
+          # Exactly ONE identity per attestor: Kyverno passes all identities of
+          # an attestor to cosign, and cosign v3 rejects more than one for
+          # bundle verification ("multiple identities are not supported").
+          identities:
+            - issuer: https://token.actions.githubusercontent.com/example-bank
+              subjectRegExp: '^https://github\.com/example-bank/platform-workflows/\.github/workflows/(sign|import-third-party)\.yml@refs/heads/main$'
+        # Trust bootstrap from the nearest private TUF replica, pinned by the
+        # TUF root (04-trust-distribution.md). No ctlog block: the Rekor
+        # inclusion proof and the SCT are verified offline from the bundle
+        # with keys from trusted_root.json.
+        tuf:
+          mirror: https://tuf.sigstore.corp.example          # overlays: tuf-az / tuf-onprem
+          root:
+            data: REPLACE_WITH_BASE64_1_ROOT_JSON           # base64 of enterprise/tuf/repo/1.root.json
+  validations:
+    - expression: >-
+        (images.?containers.orValue([]) + images.?initContainers.orValue([]) +
+         images.?ephemeralContainers.orValue([]))
+        .map(image, verifyImageSignatures(image, [attestors.centralWorkflows])).all(e, e > 0)
+      message: >-
+        Image is not signed by an example-bank central workflow (sign.yml or
+        import-third-party.yml on main). See 05-consumer-clusters.md §5.

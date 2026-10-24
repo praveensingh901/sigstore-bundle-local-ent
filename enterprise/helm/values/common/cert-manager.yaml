@@ -1,0 +1,10 @@
+# cert-manager v1.21.3 (platform cluster)
+crds:
+  enabled: true
+  keep: true
+replicaCount: 2
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+prometheus:
+  enabled: true

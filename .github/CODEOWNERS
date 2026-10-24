@@ -1,0 +1,12 @@
+# Changes to trust material, keys and policies need Security / PKI review.
+*                                   @example-bank/cloud-platform
+/enterprise/pki/                    @example-bank/security-pki @example-bank/cloud-platform
+/enterprise/pki-ceremony/           @example-bank/security-pki
+/enterprise/tuf/                    @example-bank/security-pki
+/enterprise/terraform/modules/kms-signing-keys/  @example-bank/security-pki
+/enterprise/terraform/modules/private-ca/        @example-bank/security-pki
+/enterprise/terraform/environments/security/     @example-bank/security-pki
+/enterprise/policies/               @example-bank/security-pki @example-bank/cloud-platform
+/enterprise/ci/                     @example-bank/devops-platform @example-bank/security-pki
+/enterprise/helm/values/prod/fulcio.yaml         @example-bank/security-pki @example-bank/cloud-platform
+/docs/adr/                          @example-bank/architecture

@@ -1,0 +1,44 @@
+# CT log (Certificate Transparency front-end, trillian "ctfe").
+# Fulcio submits every pre-certificate here and embeds the returned Signed
+# Certificate Timestamp (SCT) in the final certificate. cosign verifies the
+# SCT with the CT log public key from the trusted root.
+# Chart: sigstore/ctlog 0.2.69  (scaffolding ct_server v0.7.33)
+# Installed into namespace ctlog-system as release "ctlog". In-cluster only:
+# no ingress — clients never call it directly.
+#
+# Components rendered:
+#   ctlog-createtree      Job: Trillian tree for the CT log -> ConfigMap ctlog-config
+#   ctlog-createctconfig  Job: builds the ctfe config. Fetches Fulcio's root
+#                         from http://fulcio-server.fulcio-system.svc/api/v1/rootCert
+#                         (so Fulcio must be up first) and uses OUR key from
+#                         Secret ctlog-signer instead of generating one.
+#   ctlog                 ct_server :6962, URL http://ctlog.ctlog-system.svc/sigstore
+forceNamespace: ctlog-system
+fullnameOverride: ctlog
+namespace:
+  name: ctlog-system
+  create: false
+
+server:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+
+createtree:
+  fullnameOverride: ctlog-createtree
+  displayName: ctlog-tree
+
+createctconfig:
+  logPrefix: sigstore
+  fulcioURL: http://fulcio-server.fulcio-system.svc
+  # Secret created by 08-deploy-sigstore.sh from pki/ctlog:
+  #   private  -> ctlog.key (legacy "Proc-Type: 4,ENCRYPTED" PEM)
+  #   password -> CTLOG_KEY_PASSWORD
+  privateSecret: ctlog-signer
+  privateKeyPasswordSecretName: ctlog-signer
+  pubkeysecret: ctlog-public-key
+
+trillian:
+  namespace: trillian-system
+  logServer:
+    name: trillian-logserver
+    portRPC: 8091

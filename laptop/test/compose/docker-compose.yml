@@ -1,0 +1,162 @@
+# =============================================================================
+# Docker-only replica of the Kubernetes stack, used to integration-test the
+# kit (PKI, Keycloak realm, Fulcio config, CT log, Rekor file signer, cosign
+# trusted root / signing config) on machines where kind is not available.
+# Same images and same arguments as the Helm charts render. Not for production.
+# Run via: test/compose/run.sh
+# =============================================================================
+name: sigstore-offline-test
+
+networks:
+  sig: {}
+
+services:
+  mysql:
+    image: gcr.io/trillian-opensource-ci/db_server@sha256:2a685a38dd0129cceb646c232d285383f614c7e6fa51ff8f512aef78e4298461
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: trillian
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: trillian
+    networks: [sig]
+    healthcheck:
+      test: ["CMD", "/etc/init.d/mysql", "status"]
+      interval: 5s
+      retries: 30
+
+  createdb:
+    image: ghcr.io/sigstore/scaffolding/createdb@sha256:16673c1099a5a0d3c2f2addc5cd57708681f03c650a39b08d62260655f304637
+    command: ["--db_name=trillian", "--mysql_uri=trillian:${MYSQL_PASSWORD}@tcp(mysql:3306)/"]
+    networks: [sig]
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: on-failure
+
+  logserver:
+    image: ghcr.io/sigstore/scaffolding/trillian_log_server@sha256:32ee491f4d005eac128203e52e5057f9cf6d8901c5df790619a9da24c000bd97
+    command:
+      - --storage_system=mysql
+      - --quota_system=mysql
+      - --mysql_uri=trillian:${MYSQL_PASSWORD}@tcp(mysql:3306)/trillian?parseTime=true&interpolateParams=true
+      - --rpc_endpoint=0.0.0.0:8091
+      - --http_endpoint=0.0.0.0:8090
+      - --alsologtostderr
+    ports: ["127.0.0.1:18091:8091"]
+    networks: [sig]
+    depends_on: { createdb: { condition: service_completed_successfully } }
+    restart: on-failure
+
+  logsigner:
+    image: ghcr.io/sigstore/scaffolding/trillian_log_signer@sha256:3d0152303816e88374c62c0faaf5179cb9c3a867fb5e3547e83c6d92f05c33dc
+    command:
+      - --storage_system=mysql
+      - --quota_system=mysql
+      - --mysql_uri=trillian:${MYSQL_PASSWORD}@tcp(mysql:3306)/trillian?parseTime=true&interpolateParams=true
+      - --rpc_endpoint=0.0.0.0:8091
+      - --http_endpoint=0.0.0.0:8090
+      - --force_master=true
+      - --alsologtostderr
+    networks: [sig]
+    depends_on: { createdb: { condition: service_completed_successfully } }
+    restart: on-failure
+
+  redis:
+    image: docker.io/library/redis@sha256:148bb5411c184abd288d9aaed139c98123eeb8824c5d3fce03cf721db58066d8
+    command: ["--bind", "0.0.0.0", "--appendonly", "yes"]
+    networks: [sig]
+
+  rekor:
+    image: ghcr.io/sigstore/rekor/rekor-server:v1.5.4@sha256:100d793d68d0e1ba9fea7df8503304cef1ca736c891bd074fcae3d450dd64169
+    command:
+      - serve
+      - --trillian_log_server.address=logserver
+      - --trillian_log_server.port=8091
+      - --redis_server.address=redis
+      - --redis_server.port=6379
+      - --rekor_server.address=0.0.0.0
+      - --rekor_server.signer=/var/run/rekor-signer/rekor.key
+      - --rekor_server.signer-passwd=${REKOR_SIGNER_PASSWORD}
+      - --enable_retrieve_api=true
+      - --trillian_log_server.tlog_id=${REKOR_TREE_ID}
+      - --enable_attestation_storage
+      - --attestation_storage_bucket=file:///var/run/attestations
+    tmpfs:
+      - /var/run/attestations:mode=1777   # a PVC in Kubernetes
+    volumes:
+      - ./.run/secrets/rekor.key:/var/run/rekor-signer/rekor.key:ro
+    networks: [sig]
+    depends_on: [redis, logserver, logsigner]
+    restart: on-failure
+
+  ctlog:
+    image: ghcr.io/sigstore/scaffolding/ct_server:v0.7.33@sha256:24293fa1ed5083412e2a8ad4a97c6c2318b3f414fea64c054d0b5b95e39e3233
+    command: ["--http_endpoint=0.0.0.0:6962", "--log_config=/ctfe-keys/config", "--alsologtostderr"]
+    volumes:
+      - ./.run/ctfe:/ctfe-keys:ro
+    networks: [sig]
+    depends_on: [logserver]
+    restart: on-failure
+
+  fulcio:
+    image: ghcr.io/sigstore/fulcio:v1.9.0@sha256:2de0226c5f82008091a4c9de4f7b84b081f2bff1d13530d7f7357a6ba19d3835
+    command:
+      - serve
+      - --port=5555
+      - --grpc-port=5554
+      - --ca=fileca
+      - --fileca-key
+      - /var/run/fulcio-secrets/key.pem
+      - --fileca-cert
+      - /var/run/fulcio-secrets/cert.pem
+      - --fileca-key-passwd
+      - ${FULCIO_CA_PASSWORD}
+      - --log_type=prod
+      - --ct-log-url=http://ctlog:6962/sigstore
+      - --config-path=/etc/fulcio-config/config.json
+    volumes:
+      - ./.run/secrets/fulcio-key.pem:/var/run/fulcio-secrets/key.pem:ro
+      - ./.run/secrets/fulcio-cert.pem:/var/run/fulcio-secrets/cert.pem:ro
+      - ./.run/fulcio/config.json:/etc/fulcio-config/config.json:ro
+    networks: [sig]
+    depends_on: [keycloak, ctlog]
+    restart: on-failure
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: ["start", "--import-realm"]
+    environment:
+      KC_HOSTNAME: https://keycloak.sigstore.local
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_DB: dev-file
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ./.run/keycloak/realm-sigstore.json:/opt/keycloak/data/import/realm-sigstore.json:ro
+    networks: [sig]
+
+  registry:
+    image: docker.io/library/registry:2.8.3
+    ports: ["127.0.0.1:5001:5000"]
+    networks: [sig]
+
+  # TLS front door: stands in for Traefik ingress. Network aliases provide the
+  # same *.sigstore.local names that CoreDNS provides inside the cluster.
+  gateway:
+    image: docker.io/library/nginx:1.27
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${PKI_DIR}/tls/wildcard-fullchain.crt:/etc/nginx/tls.crt:ro
+      - ./.run/secrets/tls.key:/etc/nginx/tls.key:ro
+      - ${OUT_DIR}/tuf/repository:/usr/share/nginx/tuf:ro
+    ports: ["127.0.0.1:443:443"]
+    networks:
+      sig:
+        aliases:
+          - keycloak.sigstore.local
+          - fulcio.sigstore.local
+          - rekor.sigstore.local
+          - registry.sigstore.local
+          - tuf.sigstore.local
+    depends_on: [keycloak, fulcio, rekor, registry]
+    restart: on-failure

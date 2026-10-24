@@ -1,0 +1,47 @@
+# CT log — chart sigstore/ctlog 0.2.69 (ct_server v0.7.33)
+# Writes are in-cluster only (Fulcio submits pre-certificates); read routes
+# are published at ctlog.sigstore.corp.example for monitors.
+forceNamespace: ctlog-system
+fullnameOverride: ctlog
+namespace:
+  name: ctlog-system
+  create: false
+
+server:
+  replicaCount: 2
+  config:
+    key: treeID
+    # treeID: set in prod/ctlog.yaml once created
+  serviceAccount:
+    create: true
+    name: ctlog
+    mountToken: false
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+  ingress:
+    # Off: the chart's Ingress would also expose add-chain / add-pre-chain.
+    # manifests/platform/ctlog-readonly-ingress.yaml publishes only the read
+    # routes (get-sth, get-sth-consistency, get-proof-by-hash, get-entries,
+    # get-roots) for monitors and auditors.
+    enabled: false
+
+createtree:
+  fullnameOverride: ctlog-createtree
+  displayName: ctlog-tree
+
+createctconfig:
+  logPrefix: sigstore
+  fulcioURL: http://fulcio-server.fulcio-system.svc
+  # Secret ctlog-signer is synced from Secrets Manager by the ctlog SecretStore
+  # (IRSA role sigstore-<env>-ctlog, manifests/platform/external-secrets.yaml):
+  #   private  -> encrypted PEM (Proc-Type: 4,ENCRYPTED) from the ceremony
+  #   password -> its password
+  privateSecret: ctlog-signer
+  privateKeyPasswordSecretName: ctlog-signer
+  pubkeysecret: ctlog-public-key
+
+trillian:
+  namespace: trillian-system
+  logServer:
+    name: trillian-logserver
+    portRPC: 8091

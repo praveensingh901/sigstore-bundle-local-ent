@@ -1,0 +1,8 @@
+# Checkov configuration for enterprise/terraform.
+# Each skip has a reason; inline #checkov:skip comments cover single resources.
+framework:
+  - terraform
+skip-check:
+  # Registry modules are pinned to exact versions (terraform-aws-modules/*)
+  # and the lock file records their hashes; commit-hash sources do not apply.
+  - CKV_TF_1

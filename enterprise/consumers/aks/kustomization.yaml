@@ -1,0 +1,59 @@
+# AKS: ACR through workload identity (AcrPull) on the Kyverno admission controller service account.
+# Render: kustomize build enterprise/consumers/aks
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../policies/kyverno
+patches:
+  - target:
+      kind: ImageValidatingPolicy
+      name: baseline-signed-by-central-workflow
+    patch: |-
+      - op: replace
+        path: /spec/attestors/0/cosign/tuf/mirror
+        value: https://tuf-az.sigstore.corp.example
+      - op: replace
+        path: /spec/matchImageReferences
+        value:
+          - glob: "examplebank.azurecr.io/*"
+      - op: replace
+        path: /spec/credentials
+        value:
+          providers: [azure]
+  - target:
+      kind: ImageValidatingPolicy
+      name: third-party-imported-only
+    patch: |-
+      - op: replace
+        path: /spec/attestors/0/cosign/tuf/mirror
+        value: https://tuf-az.sigstore.corp.example
+      - op: replace
+        path: /spec/matchImageReferences
+        value:
+          - glob: "examplebank.azurecr.io/vendor/*"
+      - op: replace
+        path: /spec/credentials
+        value:
+          providers: [azure]
+  - target:
+      kind: ImageValidatingPolicy
+      name: staff-signed-optin
+    patch: |-
+      - op: replace
+        path: /spec/attestors/0/cosign/tuf/mirror
+        value: https://tuf-az.sigstore.corp.example
+      - op: replace
+        path: /spec/matchImageReferences
+        value:
+          - glob: "examplebank.azurecr.io/*"
+      - op: replace
+        path: /spec/credentials
+        value:
+          providers: [azure]
+  - target:
+      kind: ValidatingPolicy
+      name: allowed-registries
+    patch: |-
+      - op: replace
+        path: /spec/variables/1/expression
+        value: "['examplebank.azurecr.io/']"

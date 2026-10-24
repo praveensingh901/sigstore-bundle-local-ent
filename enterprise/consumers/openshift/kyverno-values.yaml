@@ -1,0 +1,72 @@
+# Kyverno on OpenShift (ARO or self-managed), layered on helm/values/common/kyverno.yaml.
+# The chart's default security contexts run under the restricted-v2 SCC when
+# the fixed UIDs are removed, so OpenShift assigns one from the namespace range.
+global:
+  image:
+    registry: examplebank.azurecr.io/mirror/reg.kyverno.io
+config:
+  webhooks:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - kyverno
+            - openshift
+            - openshift-apiserver
+            - openshift-authentication
+            - openshift-cluster-version
+            - openshift-config
+            - openshift-dns
+            - openshift-etcd
+            - openshift-image-registry
+            - openshift-ingress
+            - openshift-kube-apiserver
+            - openshift-kube-controller-manager
+            - openshift-kube-scheduler
+            - openshift-machine-api
+            - openshift-machine-config-operator
+            - openshift-monitoring
+            - openshift-network-operator
+            - openshift-operator-lifecycle-manager
+            - openshift-ovn-kubernetes
+            - openshift-gitops
+        # Namespaces created by OpenShift operators carry this label.
+        - key: openshift.io/run-level
+          operator: DoesNotExist
+admissionController:
+  container:
+    securityContext:
+      runAsUser: null
+      runAsGroup: null
+  initContainer:
+    securityContext:
+      runAsUser: null
+      runAsGroup: null
+backgroundController:
+  securityContext:
+    runAsUser: null
+    runAsGroup: null
+reportsController:
+  securityContext:
+    runAsUser: null
+    runAsGroup: null
+cleanupController:
+  securityContext:
+    runAsUser: null
+    runAsGroup: null
+# Hook Jobs and helm test Pods
+crds:
+  migration:
+    securityContext:
+      runAsUser: null
+      runAsGroup: null
+webhooksCleanup:
+  securityContext:
+    runAsUser: null
+    runAsGroup: null
+test:
+  securityContext:
+    runAsUser: null
+    runAsGroup: null

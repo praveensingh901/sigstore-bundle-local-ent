@@ -1,0 +1,27 @@
+# Amazon RDS CA bundle for the Region, used as the only trust store by
+# Trillian (SSL_CERT_FILE) and by Keycloak (sslrootcert) to verify Aurora.
+# Generate it on a connected machine and commit the result (public data):
+#
+#   curl -fsSo me-central-1-bundle.pem \
+#     https://truststore.pki.rds.amazonaws.com/me-central-1/me-central-1-bundle.pem
+#   kubectl create configmap rds-ca-bundle --from-file=bundle.pem=me-central-1-bundle.pem \
+#     --dry-run=client -o yaml > rds-ca-bundle.yaml       # one per namespace below
+#
+# Placeholder content keeps the manifests renderable before that step.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rds-ca-bundle
+  namespace: trillian-system
+data:
+  bundle.pem: |
+    # REPLACE with the RDS bundle for me-central-1 (and me-south-1 in DR)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rds-ca-bundle
+  namespace: keycloak
+data:
+  bundle.pem: |
+    # REPLACE with the RDS bundle for me-central-1 (and me-south-1 in DR)

@@ -1,0 +1,141 @@
+ ✔  PKI already exists in /home/claude/repo/laptop/pki (use --force to regenerate)
+==> Rendering Keycloak realm + Fulcio config
+==> Starting Trillian (MySQL, createdb, log server, log signer)
+time="2026-10-24T18:43:54+04:00" level=warning msg="The \"REKOR_TREE_ID\" variable is not set. Defaulting to a blank string."
+I1024 18:43:55.896027   21889 main.go:110] Creating tree tree_state:ACTIVE tree_type:LOG display_name:"ctlog-tree" max_root_duration:{seconds:3600}
+W1024 18:43:55.896202   21889 rpcflags.go:36] Using an insecure gRPC connection to Trillian
+I1024 18:43:55.896388   21889 admin.go:50] CreateTree...
+I1024 18:43:55.898929   21889 admin.go:95] Initialising Log 6147020889947945004...
+I1024 18:43:55.902754   21889 admin.go:106] Initialised Log (6147020889947945004) with new SignedTreeHead:
+log_root:"\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00 \xe3\xb0\xc4B\x98\xfc\x1c\x14\x9a\xfb\xf4șo\xb9$'\xaeA\xe4d\x9b\x93L\xa4\x95\x99\x1bxR\xb8U\x18\xe1~VSi.$\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+ ✔  Trillian trees: rekor=6698568708180199726 ctlog=6147020889947945004
+==> Writing CT front-end config (same proto createctconfig generates in k8s)
+==> == 09-configure-cosign.sh + 12-publish-tuf.sh --build-only (no network needed) ==
+==> Creating /home/claude/repo/laptop/out/trusted_root.json
+==> Creating /home/claude/repo/laptop/out/signing_config.json
+==> Creating /home/claude/repo/laptop/out/ca-bundle.pem (system roots + private TLS root)
+ ✔  Client trust material ready:
+  Fulcio CAs : 1  (https://fulcio.sigstore.local)
+  Rekor logs : 1  (https://rekor.sigstore.local)
+  CT logs    : 1  (http://ctlog.ctlog-system.svc/sigstore)
+  next: source /home/claude/repo/laptop/out/cosign.env && scripts/10-sign-and-verify.sh
+==> Building TUF repository with ghcr.io/sigstore/scaffolding/server@sha256:b5b67a4249041249b0ad97651ff57e1f3be1468d79a01a919b39f0a1952a3def
+ ✔  TUF repo built: 6 targets, metadata expires 2027-04-24T14:43:56Z
+==> Starting Rekor, CT log, Fulcio, Keycloak, registry, TLS gateway (+TUF)
+==> Proving the toolbox is air-gapped (public internet must be unreachable)
+ ✔  No internet from toolbox
+ ✔  All endpoints answer over TLS
+==> Pushing demo image into the private registry
+==> == 10-sign-and-verify.sh (AUTH=password, user identity) ==
+ ✔  Artifact: registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523
+==> Keyless signing (password flow) via https://fulcio.sigstore.local + https://rekor.sigstore.local
+Generating ephemeral keys...
+Signing artifact...
+Pushing signature to: registry.sigstore.local/demo/hello
+ ✔  Signed
+
+Verification for registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+  verified : registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523
+  type     : https://sigstore.dev/cosign/sign/v1
+  identity : alice@sigstore.local  (issuer https://keycloak.sigstore.local/realms/sigstore)
+ ✔  Verified registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523
+==> Negative test: a wrong identity MUST fail
+ ✔  Wrong identity rejected (as expected)
+  next: scripts/11-inspect-rekor.sh
+==> == 10-sign-and-verify.sh (AUTH=ci, machine identity) ==
+ ✔  Artifact: registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523
+==> Keyless signing (ci flow) via https://fulcio.sigstore.local + https://rekor.sigstore.local
+Generating ephemeral keys...
+Signing artifact...
+Pushing signature to: registry.sigstore.local/demo/hello
+ ✔  Signed
+
+Verification for registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+  verified : registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523
+  type     : https://sigstore.dev/cosign/sign/v1
+  identity : ci@sigstore.local  (issuer https://keycloak.sigstore.local/realms/sigstore)
+ ✔  Verified registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523
+==> Negative test: a wrong identity MUST fail
+ ✔  Wrong identity rejected (as expected)
+  next: scripts/11-inspect-rekor.sh
+==> == 11-inspect-rekor.sh ==
+==> Log state: https://rekor.sigstore.local/api/v1/log
+{
+  "treeSize": 2,
+  "rootHash": "abfd150c9b4d9d1f33dd8e2a9c9e8c6b1491c8ae6d0c5b5afb34c878880dc073",
+  "treeID": "6698568708180199726",
+  "signedTreeHead": [
+    "67d52bb036c0 - 6698568708180199726",
+    "2",
+    "q/0VDJtNnR8z3Y4qnJ6MaxSRyK5tDFta+zTIeIgNwHM="
+  ]
+}
+────────────────────────────────────────────────────────────
+logIndex       : 1
+kind           : dsse/0.0.1
+integratedTime : 2026-10-24T14:44:02Z
+logID          : 342a54846065dec879125db37c8d9b5807b60f95d251dfbe534af2437f4e0095
+uuid           : 5cf618bfe2a0c92e0c6ae9c4a3b2ce879c41537094e849cd6037724d96400f638f5d8be7860197be
+artifact hash  : sha256:d376feac9aaccc3846b1b097d4b724767d141e96bcbac80609f5adf43129e0c8
+  cert: subject=
+  cert: issuer=O = Sigstore Offline Lab, OU = Code Signing, CN = Sigstore Offline Fulcio Intermediate CA
+  cert: notBefore=Oct 24 14:44:02 2026 GMT
+  cert: notAfter=Oct 24 14:54:02 2026 GMT
+  cert: X509v3 Subject Alternative Name: critical
+  cert:     email:ci@sigstore.local
+inclusion proof: 1 hashes, checkpoint signed by log
+────────────────────────────────────────────────────────────
+logIndex       : 0
+kind           : dsse/0.0.1
+integratedTime : 2026-10-24T14:44:01Z
+logID          : 342a54846065dec879125db37c8d9b5807b60f95d251dfbe534af2437f4e0095
+uuid           : 5cf618bfe2a0c92e13dc2dbdb05667d60fe8aa1acb42d11aebe93d60676c1c35536998357de4fdb5
+artifact hash  : sha256:d376feac9aaccc3846b1b097d4b724767d141e96bcbac80609f5adf43129e0c8
+  cert: subject=
+  cert: issuer=O = Sigstore Offline Lab, OU = Code Signing, CN = Sigstore Offline Fulcio Intermediate CA
+  cert: notBefore=Oct 24 14:44:01 2026 GMT
+  cert: notAfter=Oct 24 14:54:01 2026 GMT
+  cert: X509v3 Subject Alternative Name: critical
+  cert:     email:alice@sigstore.local
+inclusion proof: 1 hashes, checkpoint signed by log
+────────────────────────────────────────────────────────────
+ ✔  Entries are persisted in MySQL (namespace trillian-system, PVC trillian-mysql)
+==> == TUF bootstrap: cosign initialize, then verify/attest/blob with NO trust flags ==
+
+Verification for registry.sigstore.local/demo/hello@sha256:ac7c3f59ed8faa0f763ea1410dc7557cce9b6747657d0592bf2f566b575d5523 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+  image signature verified
+  blob signature verified
+  in-toto attestation verified
+ ✔  TUF-bootstrapped client works
+==> == Kyverno ImageValidatingPolicy (13-deploy-policy.sh --render-only + kyverno CLI) ==
+  policy require-private-sigstore-signature -> resource demo/Pod/unsigned failed:
+  pass: 1, fail: 1, warn: 0, error: 0, skip: 0 
+ ✔  Kyverno: signed admitted, unsigned denied (trust from private TUF)
+==> == Kyverno attestor shapes used by the enterprise policy pack ==
+  two identities, one attestor: pass: 0, fail: 2, warn: 0, error: 0, skip: 0 
+  two attestors with ||:        pass: 1, fail: 1, warn: 0, error: 0, skip: 0 
+ ✔  Kyverno: one identity per attestor, alternatives with || (as in enterprise/policies)
+==> == gitsign: signed commits and tags against the private Sigstore ==
+  14-configure-gitsign.sh: trust exported from the private TUF mirror
+  commit and tag signed
+  gitsign verify HEAD: signature, Rekor entry and identity OK
+  gitsign verify-tag OK
+  git verify-commit HEAD OK (signature + Rekor; identity not checked, as gitsign warns)
+  wrong identity rejected
+  matchCommitter refuses to sign with a mismatched user.email
+  verification without the private trust root fails, as it must
+ ✔  gitsign commit/tag signing and verification work offline
+ ✔  END-TO-END OFFLINE TEST PASSED
+EXIT=0

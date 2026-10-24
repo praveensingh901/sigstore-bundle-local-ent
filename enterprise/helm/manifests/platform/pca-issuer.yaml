@@ -1,0 +1,11 @@
+# Issues pod TLS certificates for names under sigstore.corp.example from the
+# AWS Private CA shared through RAM (02-pki-and-ceremony.md §5). Certificate
+# usages are left at cert-manager defaults so the issuer selects the
+# EndEntityCertificate/V1 template allowed by the default RAM permission.
+apiVersion: awspca.cert-manager.io/v1beta1
+kind: AWSPCAClusterIssuer
+metadata:
+  name: sigstore-tls
+spec:
+  arn: arn:aws:acm-pca:me-central-1:111111111111:certificate-authority/REPLACE
+  region: me-central-1

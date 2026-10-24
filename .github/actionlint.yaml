@@ -1,0 +1,2 @@
+self-hosted-runner:
+  labels: [sigstore-signing, sigstore-verify, build, onprem-tuf]

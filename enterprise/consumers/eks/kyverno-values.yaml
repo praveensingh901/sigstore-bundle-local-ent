@@ -1,0 +1,11 @@
+# Kyverno on EKS (layered on helm/values/common/kyverno.yaml)
+global:
+  image:
+    registry: 333333333333.dkr.ecr.me-central-1.amazonaws.com/mirror/reg.kyverno.io
+admissionController:
+  rbac:
+    serviceAccount:
+      annotations:
+        # IAM role allowing ecr:GetAuthorizationToken, ecr:BatchGetImage,
+        # ecr:GetDownloadUrlForLayer on the application repositories.
+        eks.amazonaws.com/role-arn: arn:aws:iam::333333333333:role/kyverno-ecr-read

@@ -1,0 +1,31 @@
+# OPTIONAL second layer on OpenShift (05-consumer-clusters.md §4.3). CRI-O
+# verifies these repositories itself, in addition to Kyverno.
+#
+# Limits (verified in openshift/api and containers/container-libs):
+#   * fulcioSubject matches only an e-mail SAN, so GitHub workflow certificates
+#     (URI SAN) can never match; this policy is for images signed by a Keycloak
+#     service identity with an e-mail SAN (realm "ci").
+#   * CRI-O reads only the legacy "sha256-<digest>.sig" tag: those images must
+#     also be signed with `cosign sign --new-bundle-format=false`.
+#   * Fulcio CA and Rekor key are inline, so rotation means updating this
+#     object as well as TUF.
+apiVersion: config.openshift.io/v1
+kind: ClusterImagePolicy
+metadata:
+  name: sigstore-platform-images
+spec:
+  scopes:
+    - examplebank.azurecr.io/platform
+  policy:
+    rootOfTrust:
+      policyType: FulcioCAWithRekor
+      fulcioCAWithRekor:
+        # base64 of enterprise/pki/fulcio-chain.pem
+        fulcioCAData: UkVQTEFDRS1XSVRILWJhc2U2NC1vZi1mdWxjaW8tY2hhaW4ucGVt
+        # base64 of enterprise/pki/rekor.pub
+        rekorKeyData: UkVQTEFDRS1XSVRILWJhc2U2NC1vZi1yZWtvci5wdWI=
+        fulcioSubject:
+          oidcIssuer: https://id.sigstore.corp.example/realms/ci
+          signedEmail: platform-release@ci.example-bank.com
+    signedIdentity:
+      matchPolicy: MatchRepoDigestOrExact

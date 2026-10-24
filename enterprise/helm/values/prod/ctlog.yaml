@@ -1,0 +1,5 @@
+# CT log — production
+server:
+  config:
+    # Trillian tree ID, committed after the first install (10-deployment-runbook.md §4.5).
+    treeID: ""

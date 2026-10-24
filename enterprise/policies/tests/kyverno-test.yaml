@@ -1,0 +1,35 @@
+# kyverno test enterprise/policies/tests
+# Behaviour tests for the CEL policies that need no registry or TUF access.
+# Signature policies (ImageValidatingPolicy) are exercised end to end by the
+# smoke test in 10-deployment-runbook.md §6, against real signatures.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: sigstore-policy-pack
+policies:
+  - ../kyverno/allowed-registries.yaml
+  - ../kyverno/protect-labels.yaml
+resources:
+  - resources.yaml
+userinfo: userinfo-dev.yaml
+results:
+  - policy: allowed-registries
+    isValidatingPolicy: true
+    kind: Pod
+    resources: [payments/approved]
+    result: pass
+  - policy: allowed-registries
+    isValidatingPolicy: true
+    kind: Pod
+    resources: [payments/public-init, payments/public]
+    result: fail
+  - policy: protect-sigstore-namespace-labels
+    isValidatingPolicy: true
+    kind: Namespace
+    resources: [team-a]
+    result: fail
+  - policy: protect-sigstore-namespace-labels
+    isValidatingPolicy: true
+    kind: Namespace
+    resources: [team-b]
+    result: pass

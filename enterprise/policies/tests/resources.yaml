@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata: { name: approved, namespace: payments }
+spec:
+  initContainers: [{ name: i, image: "333333333333.dkr.ecr.me-central-1.amazonaws.com/payments/init@sha256:1111111111111111111111111111111111111111111111111111111111111111" }]
+  containers: [{ name: c, image: "harbor.corp.example/team/app@sha256:2222222222222222222222222222222222222222222222222222222222222222" }]
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: public-init, namespace: payments }
+spec:
+  initContainers: [{ name: i, image: "docker.io/library/busybox:1.37" }]
+  containers: [{ name: c, image: "examplebank.azurecr.io/app@sha256:3333333333333333333333333333333333333333333333333333333333333333" }]
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: public, namespace: payments }
+spec:
+  containers: [{ name: c, image: "ghcr.io/someone/app:1" }]
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels: { sigstore.example-bank.com/enforce: "off" }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-b
+  labels: { team: b }

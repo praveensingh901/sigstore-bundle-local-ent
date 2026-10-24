@@ -1,0 +1,64 @@
+# .gitlab-ci.yml — GitLab self-managed (air-gapped) + private Sigstore.
+# -----------------------------------------------------------------------------
+# Runner image must contain cosign v3.1.3, crane, curl, jq, and:
+#   /etc/sigstore/ca.crt (pki/tls/ca.crt), /etc/sigstore/tuf-root.json (out/tuf/root.json)
+#
+# Identity options:
+#   A) Keycloak machine identity (below): CI/CD variable SIGSTORE_CI_CLIENT_SECRET
+#      (masked + protected) -> SAN ci@sigstore.local
+#   B) GitLab native OIDC: uncomment `id_tokens` and add to Fulcio config:
+#        "https://gitlab.example.internal": {
+#          "IssuerURL": "https://gitlab.example.internal",
+#          "ClientID": "sigstore", "Type": "gitlab-pipeline" }
+#      then use --identity-token "$SIGSTORE_ID_TOKEN"; SAN becomes
+#      https://gitlab.example.internal/<group>/<project>//.gitlab-ci.yml@refs/heads/main
+# -----------------------------------------------------------------------------
+variables:
+  IMAGE: registry.sigstore.local/demo/hello
+  OIDC_ISSUER: https://keycloak.sigstore.local/realms/sigstore
+  TUF_MIRROR: https://tuf.sigstore.local
+  SSL_CERT_FILE: /tmp/ca-bundle.pem
+
+stages: [build, sign, verify]
+
+.sigstore-trust: &sigstore-trust
+  - cat /etc/ssl/certs/ca-certificates.crt /etc/sigstore/ca.crt > /tmp/ca-bundle.pem
+  - cosign initialize --mirror "$TUF_MIRROR" --root /etc/sigstore/tuf-root.json
+
+build:
+  stage: build
+  image: registry.sigstore.local/ci/builder:latest     # your hardened builder image
+  script:
+    - *sigstore-trust
+    # daemonless build: append the app files as one layer on a mirrored base
+    - tar -C examples/demo-app -cf layer.tar .
+    - crane append -f layer.tar -b registry.sigstore.local/library/busybox:1.37.0 -t "$IMAGE:$CI_COMMIT_SHORT_SHA"
+    - echo "DIGEST=$(crane digest "$IMAGE:$CI_COMMIT_SHORT_SHA")" > build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+
+sign:
+  stage: sign
+  image: registry.sigstore.local/ci/sigstore-tools:3.1.3
+  # id_tokens:                       # option B (GitLab native OIDC)
+  #   SIGSTORE_ID_TOKEN:
+  #     aud: sigstore
+  script:
+    - *sigstore-trust
+    - |
+      TOKEN=$(curl -fsS "$OIDC_ISSUER/protocol/openid-connect/token" \
+        -d grant_type=client_credentials -d client_id=sigstore-ci \
+        --data-urlencode client_secret="$SIGSTORE_CI_CLIENT_SECRET" -d scope="openid email" | jq -r .access_token)
+    - cosign sign --yes --identity-token "$TOKEN" "$IMAGE@$DIGEST"
+    - echo "{\"project\":\"$CI_PROJECT_PATH\",\"pipeline\":\"$CI_PIPELINE_ID\",\"commit\":\"$CI_COMMIT_SHA\"}" > provenance.json
+    - cosign attest --yes --identity-token "$TOKEN" --type https://example.com/ci-provenance/v1 --predicate provenance.json "$IMAGE@$DIGEST"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+verify:
+  stage: verify
+  image: registry.sigstore.local/ci/sigstore-tools:3.1.3
+  script:
+    - *sigstore-trust
+    - cosign verify --certificate-identity ci@sigstore.local --certificate-oidc-issuer "$OIDC_ISSUER" "$IMAGE@$DIGEST"

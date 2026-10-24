@@ -1,0 +1,103 @@
+# Deployed as example-bank/platform-workflows/.github/workflows/verify-commits.yml
+# and enforced by an ORGANISATION RULESET rule "Require workflows to pass before
+# merging" that points at this file at a pinned ref (enterprise/docs/11-gitsign.md §3).
+# Do not enforce it as a plain required status check: a status check is matched
+# by name, and a pull request can change its own caller workflow to report a
+# green check without running this file.
+#
+# Every new commit in a pull request must carry a gitsign signature from an
+# example-bank engineer (Keycloak "staff" realm), verified against the private
+# Sigstore trust root. Two exceptions, both decided on facts GitHub or git
+# computes, never on free-text author fields:
+#   - commits by allow-listed bot ACCOUNTS that GitHub reports as verified, whose
+#     committer is that bot account itself, in a pull request opened by that bot
+#     (merge_group runs rely on the pull_request run having checked the PR author);
+#   - clean merge commits created by GitHub ("Update branch"): committer web-flow,
+#     verified by GitHub, two parents, and a tree identical to what git itself
+#     produces when merging those parents, so the merge adds no content
+#     (git merge-tree --write-tree needs git >= 2.38 on the runner).
+# Merge queue: configure the ruleset's merge queue with the MERGE method. With
+# squash or rebase the queue builds new GitHub-signed single-parent commits that
+# this check (correctly) rejects. Likewise use "Update with merge", not "Update
+# with rebase", or rebase locally and re-sign.
+#
+# Why not GitHub's "Require signed commits" rule: GitHub verifies S/MIME (x509)
+# signatures only against public CAs, so commits signed with our private Fulcio
+# show as "Unverified" there and that rule would block every one of them.
+name: verify-commits
+on:
+  pull_request:
+  merge_group:
+
+permissions: {}
+
+env:
+  # GitHub logins (not e-mails) of bots whose GitHub-verified commits are accepted.
+  ALLOWED_BOT_LOGINS: "dependabot[bot] renovate[bot]"
+  STAFF_IDENTITY: '^[a-z0-9._-]+@example-bank\.com$'
+  STAFF_ISSUER: https://id.sigstore.corp.example/realms/staff
+
+jobs:
+  verify:
+    # Verification needs only TUF and git: a pool WITHOUT network access to
+    # Fulcio/Rekor and separate from the signing pool, because pull requests
+    # are untrusted input.
+    runs-on: [self-hosted, sigstore-verify]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          persist-credentials: false
+      - name: Trust the private Sigstore (TUF -> files gitsign reads)
+        run: |
+          cat /etc/ssl/certs/ca-certificates.crt /etc/sigstore/ca.crt > "$RUNNER_TEMP/ca.pem"
+          echo "SSL_CERT_FILE=$RUNNER_TEMP/ca.pem" >> "$GITHUB_ENV"
+          SSL_CERT_FILE="$RUNNER_TEMP/ca.pem" cosign initialize \
+            --mirror https://tuf.sigstore.corp.example --root /etc/sigstore/tuf-root.json
+          export-trust.sh "$HOME"/.sigstore/root/tuf.sigstore.corp.example/targets/trusted_root.json "$RUNNER_TEMP/trust"
+          sed 's/^export //' "$RUNNER_TEMP/trust/gitsign.env" >> "$GITHUB_ENV"
+      - name: Verify every commit in the pull request
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+          PR_USER: ${{ github.event.pull_request.user.login }}
+        run: |
+          api() { curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                    "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$1"; }
+          fail=0
+          for c in $(git rev-list "$BASE..$HEAD"); do
+            if gitsign verify --certificate-identity-regexp "$STAFF_IDENTITY" \
+                 --certificate-oidc-issuer "$STAFF_ISSUER" "$c" > "$RUNNER_TEMP/v.log" 2>&1; then
+              echo "ok   $c $(grep -o 'Good signature from \[[^]]*\]' "$RUNNER_TEMP/v.log" | head -1)"
+              continue
+            fi
+            meta="$(api "$c")"
+            verified="$(jq -r '.commit.verification.verified' <<<"$meta")"
+            author="$(jq -r '.author.login // ""' <<<"$meta")"
+            committer="$(jq -r '.committer.login // ""' <<<"$meta")"
+            parents="$(jq -r '.parents | length' <<<"$meta")"
+            # Bot: GitHub-verified, committed BY the bot account itself (not web-flow:
+            # GitHub signs web/API commits whose author anyone can set), and on a
+            # pull request the PR must have been opened by that bot.
+            if [[ "$verified" == true && -n "$author" && " $ALLOWED_BOT_LOGINS " == *" $author "* \
+                  && "$committer" == "$author" \
+                  && ( "$GITHUB_EVENT_NAME" == merge_group || "$PR_USER" == "$author" ) ]]; then
+              echo "skip $c (GitHub-verified commit by bot account $author)"; continue
+            fi
+            if [[ "$verified" == true && "$committer" == web-flow && "$parents" == 2 ]]; then
+              expected="$(git merge-tree --write-tree "$c^1" "$c^2" 2>/dev/null | head -1 || true)"
+              if [[ -n "$expected" && "$expected" == "$(git rev-parse "$c^{tree}")" ]]; then
+                echo "skip $c (clean GitHub merge commit: no content beyond its parents)"; continue
+              fi
+              echo "::error::commit $c is a GitHub merge commit with changes (conflict resolution in the web UI). Rebase locally and sign with gitsign."
+              fail=1; continue
+            fi
+            echo "::error::commit $c is not signed with gitsign by an example-bank identity"
+            sed 's/^/     /' "$RUNNER_TEMP/v.log"; fail=1
+          done
+          exit "$fail"

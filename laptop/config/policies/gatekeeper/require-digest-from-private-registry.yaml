@@ -1,0 +1,58 @@
+# Gatekeeper: every container image must be pulled from the private registry
+# and pinned by digest (so the signature Kyverno verified is the exact content
+# that runs). Apply after installing Gatekeeper (chart gatekeeper/gatekeeper).
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sdigestfromregistry
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sDigestFromRegistry
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            registries:
+              type: array
+              items: { type: string }
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sdigestfromregistry
+
+        containers[c] { c := input.review.object.spec.containers[_] }
+        containers[c] { c := input.review.object.spec.initContainers[_] }
+        containers[c] { c := input.review.object.spec.ephemeralContainers[_] }
+
+        allowed_registry(img) {
+          r := input.parameters.registries[_]
+          startswith(img, concat("", [r, "/"]))
+        }
+
+        violation[{"msg": msg}] {
+          c := containers[_]
+          not allowed_registry(c.image)
+          msg := sprintf("container %q: image %q is not from an approved registry %v", [c.name, c.image, input.parameters.registries])
+        }
+
+        violation[{"msg": msg}] {
+          c := containers[_]
+          not contains(c.image, "@sha256:")
+          msg := sprintf("container %q: image %q must be pinned by digest (@sha256:...)", [c.name, c.image])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sDigestFromRegistry
+metadata:
+  name: digest-from-private-registry
+spec:
+  enforcementAction: deny          # use "dryrun" first in existing clusters
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    excludedNamespaces: [kube-system, gatekeeper-system, kyverno, traefik, local-path-storage]
+  parameters:
+    registries: ["registry.sigstore.local"]

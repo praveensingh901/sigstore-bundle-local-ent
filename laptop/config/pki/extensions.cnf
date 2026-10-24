@@ -1,0 +1,49 @@
+# OpenSSL X.509 v3 extension profiles used by scripts/03-generate-pki.sh
+# Values in $ENV:: are exported by the script before calling openssl.
+
+# ---------------------------------------------------------------------------
+# TLS hierarchy (protects HTTPS to Keycloak/Fulcio/Rekor/registry).
+# Kept SEPARATE from the code-signing hierarchy on purpose: a TLS key leak
+# must never let anyone mint code-signing certificates, and vice versa.
+# ---------------------------------------------------------------------------
+[ tls_root ]
+basicConstraints       = critical, CA:TRUE, pathlen:0
+keyUsage               = critical, keyCertSign, cRLSign
+subjectKeyIdentifier   = hash
+
+[ tls_server ]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = serverAuth
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+subjectAltName         = @tls_sans
+
+[ tls_sans ]
+DNS.1 = *.$ENV::DOMAIN
+DNS.2 = $ENV::DOMAIN
+DNS.3 = $ENV::KEYCLOAK_HOST
+DNS.4 = $ENV::FULCIO_HOST
+DNS.5 = $ENV::REKOR_HOST
+DNS.6 = $ENV::REGISTRY_HOST
+DNS.7 = $ENV::TUF_HOST
+DNS.8 = localhost
+IP.1  = 127.0.0.1
+
+# ---------------------------------------------------------------------------
+# Code-signing hierarchy (Fulcio). Root is offline; intermediate is the
+# issuing CA loaded by Fulcio's "fileca" backend.
+# Fulcio REQUIRES the issuing intermediate to carry EKU codeSigning
+# (pkg/ca/common.go VerifyCertChain), otherwise it refuses to start.
+# ---------------------------------------------------------------------------
+[ fulcio_root ]
+basicConstraints       = critical, CA:TRUE, pathlen:1
+keyUsage               = critical, keyCertSign, cRLSign
+subjectKeyIdentifier   = hash
+
+[ fulcio_intermediate ]
+basicConstraints       = critical, CA:TRUE, pathlen:0
+keyUsage               = critical, keyCertSign, cRLSign
+extendedKeyUsage       = codeSigning
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always

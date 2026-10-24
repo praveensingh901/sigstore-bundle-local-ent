@@ -1,0 +1,6 @@
+clusterName: sigstore-dr
+region: me-south-1
+vpcId: vpc-REPLACE
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-dr-lbc

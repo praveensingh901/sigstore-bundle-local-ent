@@ -1,0 +1,7 @@
+# Trillian — DR
+mysql:
+  hostname: sigstore-dr-mysql.cluster-REPLACE.me-south-1.rds.amazonaws.com
+logServer:
+  replicaCount: 0
+logSigner:
+  replicaCount: 0

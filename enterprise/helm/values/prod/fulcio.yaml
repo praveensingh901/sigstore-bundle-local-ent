@@ -1,0 +1,80 @@
+# Fulcio — production (me-central-1). Public material only; no secrets here.
+server:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-prod-fulcio
+  args:
+    # Alias ARN in the security account. In DR the alias of the multi-Region
+    # replica has the same name in me-south-1 (dr/fulcio.yaml).
+    kms_resource: awskms:///arn:aws:kms:me-central-1:111111111111:alias/sigstore/fulcio-ca
+    # enterprise/pki/fulcio-chain.pem (Sigstore Code-Signing CA first, root last),
+    # pasted from the ceremony PR. Placeholder until the ceremony.
+    kms_cert_chain: |
+      -----BEGIN CERTIFICATE-----
+      REPLACE-WITH-enterprise/pki/fulcio-chain.pem
+      -----END CERTIFICATE-----
+  ingress:
+    http:
+      annotations:
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-central-1:222222222222:certificate/REPLACE
+        alb.ingress.kubernetes.io/security-groups: sg-REPLACE-signing   # terraform output alb_security_group_ids.signing
+
+config:
+  contents:
+    oidc-issuers:
+      # Pipelines: GitHub Enterprise Cloud, enterprise-unique issuer (03-identity.md §1).
+      https://token.actions.githubusercontent.com/example-bank:
+        issuer-url: https://token.actions.githubusercontent.com/example-bank
+        client-id: sigstore
+        type: ci-provider
+        ci-provider: github-workflow
+        description: GitHub Actions, example-bank enterprise
+      # People: Keycloak "staff" realm, brokering Entra ID and AD FS.
+      https://id.sigstore.corp.example/realms/staff:
+        issuer-url: https://id.sigstore.corp.example/realms/staff
+        client-id: sigstore
+        type: email
+        description: Example Bank staff (Keycloak broker)
+        # Corporate root, so Fulcio can fetch Keycloak discovery/JWKS over TLS.
+        ca-cert: |
+          -----BEGIN CERTIFICATE-----
+          REPLACE-WITH-enterprise/pki/root.crt
+          -----END CERTIFICATE-----
+      # Non-GitHub CI (e.g. a legacy Jenkins controller) signs through the
+      # Keycloak "ci" realm: a confidential client per system whose service
+      # account user has a verified e-mail such as jenkins-prod@ci.example-bank.com
+      # (06-ci-github.md §6). Policies list those identities explicitly.
+      https://id.sigstore.corp.example/realms/ci:
+        issuer-url: https://id.sigstore.corp.example/realms/ci
+        client-id: sigstore
+        type: email
+        description: Non-GitHub CI service identities
+        ca-cert: |
+          -----BEGIN CERTIFICATE-----
+          REPLACE-WITH-enterprise/pki/root.crt
+          -----END CERTIFICATE-----
+    ci-issuer-metadata:
+      github-workflow:
+        default-template-values:
+          url: https://github.com
+        extension-templates:          # same mapping as public-good Fulcio (config/identity/config.yaml)
+          github-workflow-trigger: event_name
+          github-workflow-sha: sha
+          github-workflow-name: workflow
+          github-workflow-repository: repository
+          github-workflow-ref: ref
+          build-signer-uri: "{{ .url }}/{{ .job_workflow_ref }}"
+          build-signer-digest: job_workflow_sha
+          runner-environment: runner_environment
+          source-repository-uri: "{{ .url }}/{{ .repository }}"
+          source-repository-digest: sha
+          source-repository-ref: ref
+          source-repository-identifier: repository_id
+          source-repository-owner-uri: "{{ .url }}/{{ .repository_owner }}"
+          source-repository-owner-identifier: repository_owner_id
+          build-config-uri: "{{ .url }}/{{ .workflow_ref }}"
+          build-config-digest: workflow_sha
+          build-trigger: event_name
+          run-invocation-uri: "{{ .url }}/{{ .repository }}/actions/runs/{{ .run_id }}/attempts/{{ .run_attempt }}"
+          source-repository-visibility-at-signing: repository_visibility
+        subject-alternative-name-template: "{{ .url }}/{{ .job_workflow_ref }}"

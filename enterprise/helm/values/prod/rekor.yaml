@@ -1,0 +1,16 @@
+# Rekor — production
+mysql:
+  hostname: sigstore-prod-mysql.cluster-REPLACE.me-central-1.rds.amazonaws.com   # terraform output aurora_endpoints.mysql
+server:
+  config:
+    # Trillian tree ID, committed after the first install (10-deployment-runbook.md §4.5).
+    # Identifies the log forever; DR uses the same ID (same Aurora global database).
+    treeID: ""
+  signer: awskms:///arn:aws:kms:me-central-1:111111111111:alias/sigstore/rekor
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-prod-rekor
+  ingress:
+    annotations:
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:me-central-1:222222222222:certificate/REPLACE
+      alb.ingress.kubernetes.io/security-groups: sg-REPLACE-signing

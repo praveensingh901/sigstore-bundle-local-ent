@@ -1,0 +1,115 @@
+# CI for this repository: static validation of everything under enterprise/,
+# the TUF tooling test, and the laptop kit's checks. Runs on GitHub-hosted
+# runners (internet access to download pinned tools and charts).
+name: validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HELM_VERSION: v3.22.1
+  TERRAFORM_VERSION: 1.13.4
+  TFLINT_VERSION: v0.59.1
+  KUBECONFORM_VERSION: v0.8.0
+  KYVERNO_VERSION: v1.19.2
+  KUSTOMIZE_VERSION: v5.8.3
+  CHECKOV_VERSION: 3.3.30
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --no-banner
+      - name: actionlint (repo CI and enterprise/ci workflows)
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          mkdir -p "$RUNNER_TEMP/al/.github/workflows" && cp enterprise/ci/*.yml .github/workflows/*.yml "$RUNNER_TEMP/al/.github/workflows/"
+          cp .github/actionlint.yaml "$RUNNER_TEMP/al/.github/" && git -C "$RUNNER_TEMP/al" init -q
+          (cd "$RUNNER_TEMP/al" && "$GITHUB_WORKSPACE/actionlint" -no-color)
+      - name: shellcheck
+        run: |
+          find enterprise tools laptop/scripts -name '*.sh' -print0 | xargs -0 shellcheck -S warning
+
+  enterprise:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: stable
+          cache: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - name: Install kubeconform, kyverno CLI, kustomize, checkov
+        run: |
+          mkdir -p "$HOME/bin" && echo "$HOME/bin" >> "$GITHUB_PATH"
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar -xz -C "$HOME/bin" kubeconform
+          curl -fsSL "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz" | tar -xz -C "$HOME/bin" kyverno
+          GOBIN="$HOME/bin" go install "sigs.k8s.io/kustomize/kustomize/v5@${KUSTOMIZE_VERSION}"
+          python -m pip install "checkov==${CHECKOV_VERSION}" PyYAML
+      - name: tools/validate.sh
+        run: ./tools/validate.sh
+      - name: Placeholders left in production values (informational until go-live)
+        run: |
+          n=$(grep -rl REPLACE enterprise/helm enterprise/consumers enterprise/policies | wc -l)
+          echo "### $n files still contain REPLACE placeholders" >> "$GITHUB_STEP_SUMMARY"
+
+  tuf:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - run: python -m pip install -r enterprise/tuf/requirements.txt
+      - run: enterprise/tuf/test.sh
+
+  ceremony-tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: enterprise/pki-ceremony/kms-csr/go.mod
+          cache: false
+      - name: Build kms-csr and run the profile tests with file keys
+        run: enterprise/pki-ceremony/test.sh
+
+  tutorial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          python3 tutorial/build.py
+          node --check tutorial/src/app.js

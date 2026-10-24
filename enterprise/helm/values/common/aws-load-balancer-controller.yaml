@@ -1,0 +1,9 @@
+# AWS Load Balancer Controller 3.6.1: internal ALBs from the Ingress groups
+# sigstore-signing and sigstore-trust (terraform network.tf security groups).
+replicaCount: 2
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller        # IRSA trust in terraform modules/platform/iam.tf (lbc)
+enableServiceMutatorWebhook: false          # only Ingress is used
+podDisruptionBudget:
+  maxUnavailable: 1

@@ -1,0 +1,83 @@
+# Trillian — chart sigstore/trillian 0.4.1 (trillian v1.8.0)
+# Storage: Aurora MySQL (terraform modules/platform/data.tf). No in-cluster MySQL.
+forceNamespace: trillian-system
+fullnameOverride: trillian
+namespace:
+  name: trillian-system
+  create: false
+
+mysql:
+  enabled: false                # external Aurora
+  # hostname and port: per environment
+  port: 3306
+  auth:
+    # Secret synced by External Secrets from Secrets Manager
+    # (manifests/platform/external-secrets.yaml); keys mysql-user,
+    # mysql-password and mysql-database (the chart reads the database name
+    # from the Secret, not from values).
+    existingSecret: trillian-db
+
+createdb:
+  enabled: false                # schema is created once by the runbook (10 §4.3), not on every sync
+
+logServer:
+  name: trillian-logserver
+  fullnameOverride: trillian-logserver
+  replicaCount: 3
+  portHTTP: 8090
+  portRPC: 8091
+  # Aurora requires TLS (require_secure_transport=ON). The chart's DSN has no
+  # tls parameter, so the flag is repeated here (Go's flag package keeps the
+  # last value) and the RDS CA bundle is the only trust store (SSL_CERT_FILE).
+  extraArgs:
+    - "--mysql_uri=$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_HOSTNAME):$(MYSQL_PORT))/$(MYSQL_DATABASE)?parseTime=true&interpolateParams=true&tls=true"
+  extraEnv:
+    - name: SSL_CERT_FILE
+      value: /etc/rds-ca/bundle.pem
+  extraVolumes:
+    - name: rds-ca
+      configMap:
+        name: rds-ca-bundle      # manifests/platform/rds-ca-bundle.yaml
+  extraVolumeMounts:
+    - name: rds-ca
+      mountPath: /etc/rds-ca
+      readOnly: true
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: log-server
+            topologyKey: topology.kubernetes.io/zone
+
+logSigner:
+  name: trillian-logsigner
+  fullnameOverride: trillian-logsigner
+  # Two signers; Kubernetes Lease election picks one master per tree
+  # (--election_system=k8s, --lock_namespace). The chart renders the Role
+  # and RoleBinding for the Lease (templates/trillian-log-signer/rbac.yaml).
+  replicaCount: 2
+  forceMaster: false
+  electionSystem: k8s
+  # Aurora requires TLS (require_secure_transport=ON). The chart's DSN has no
+  # tls parameter, so the flag is repeated here (Go's flag package keeps the
+  # last value) and the RDS CA bundle is the only trust store (SSL_CERT_FILE).
+  extraArgs:
+    - "--mysql_uri=$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_HOSTNAME):$(MYSQL_PORT))/$(MYSQL_DATABASE)?parseTime=true&interpolateParams=true&tls=true"
+  extraEnv:
+    - name: SSL_CERT_FILE
+      value: /etc/rds-ca/bundle.pem
+  extraVolumes:
+    - name: rds-ca
+      configMap:
+        name: rds-ca-bundle      # manifests/platform/rds-ca-bundle.yaml
+  extraVolumeMounts:
+    - name: rds-ca
+      mountPath: /etc/rds-ca
+      readOnly: true
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }

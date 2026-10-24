@@ -1,0 +1,16 @@
+# Allow-list of signing identities: the single source used by the Kyverno
+# policies (kyverno/*.yaml) and by the CT/Rekor monitors (07 §4). A change here
+# is reviewed by Security (CODEOWNERS) and rolled into both.
+issuers:
+  github: https://token.actions.githubusercontent.com/example-bank
+  staff: https://id.sigstore.corp.example/realms/staff
+  ci: https://id.sigstore.corp.example/realms/ci
+workflows:
+  # Reusable workflows that may sign (SAN = job_workflow_ref)
+  sign: https://github.com/example-bank/platform-workflows/.github/workflows/sign.yml@refs/heads/main
+  import-third-party: https://github.com/example-bank/platform-workflows/.github/workflows/import-third-party.yml@refs/heads/main
+ci-service-identities:
+  - jenkins-prod@ci.example-bank.com
+staff:
+  # Break-glass and approvals only; opt-in namespaces (kyverno/staff-signed-optin.yaml)
+  emailRegExp: '^[a-z0-9._-]+@example-bank\.com$'

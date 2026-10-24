@@ -1,0 +1,67 @@
+# Traefik v3.7 (chart traefik/traefik 42.0.0) — the cluster's TLS front door.
+# (ingress-nginx was retired by the Kubernetes project in March 2026.)
+#
+# Laptop topology (kind):
+#   laptop :443 --(kind extraPortMappings)--> node :443 --(hostPort)--> Traefik :8443
+#   pods / node containerd --> Service traefik (fixed ClusterIP, injected by
+#   05-deploy-ingress.sh as service.spec.clusterIP=${INGRESS_CLUSTER_IP})
+# TLS: every Ingress references Secret "sigstore-tls" (*.sigstore.local); the
+# same cert is also Traefik's default certificate.
+deployment:
+  kind: Deployment
+  replicas: 1
+
+# Run on the node that owns the host port mappings.
+nodeSelector:
+  ingress-ready: "true"
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesCRD:
+    enabled: true
+
+ports:
+  web:
+    hostPort: 80
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    hostPort: 443
+    transport:
+      # Large image pushes to registry.sigstore.local must not time out.
+      respondingTimeouts:
+        readTimeout: 0
+        writeTimeout: 0
+        idleTimeout: 600s
+
+tlsStore:
+  default:
+    defaultCertificate:
+      secretName: sigstore-tls
+
+service:
+  spec:
+    type: ClusterIP
+
+log:
+  level: INFO
+accessLog:
+  enabled: true
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 256Mi }

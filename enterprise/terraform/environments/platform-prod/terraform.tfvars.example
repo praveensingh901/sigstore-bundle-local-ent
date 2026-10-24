@@ -1,0 +1,8 @@
+terraform_role_arn   = "arn:aws:iam::222222222222:role/sigstore-platform-terraform"
+transit_gateway_id   = "tgw-0123456789abcdef0"
+organization_id      = "o-exampleorg1"
+signing_client_cidrs = ["10.40.0.0/16", "10.200.0.0/16"] # CI runner VPC, staff VPN
+trust_client_cidrs   = ["10.0.0.0/8", "172.16.0.0/12"]   # all consumer networks
+admin_role_arns      = ["arn:aws:iam::222222222222:role/sigstore-platform-break-glass"]
+# Second apply, after the PCA is imported and active:
+# pca_arn = "arn:aws:acm-pca:me-central-1:111111111111:certificate-authority/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

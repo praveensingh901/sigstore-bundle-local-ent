@@ -1,0 +1,69 @@
+# Opt-in: namespaces labelled sigstore.example-bank.com/allow-staff-signatures: "true"
+# also accept signatures by named staff (break-glass releases, approvals).
+# The baseline excludes these namespaces, so this policy carries the
+# workflow identities as well. Setting the label pages security on-call.
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: staff-signed-optin
+  annotations:
+    policies.kyverno.io/title: Workflow or staff signatures (opt-in namespaces)
+    policies.kyverno.io/severity: high
+spec:
+  validationActions: [Audit]
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE", "UPDATE"]
+    namespaceSelector:
+      matchLabels:
+        sigstore.example-bank.com/allow-staff-signatures: "true"
+      matchExpressions:
+        - key: sigstore.example-bank.com/enforce
+          operator: NotIn
+          values: ["off"]
+  matchImageReferences:
+    - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/*"
+    - glob: "examplebank.azurecr.io/*"
+    - glob: "harbor.corp.example/*"
+  credentials:
+    providers: [default]
+  attestors:
+    # One identity per attestor (cosign v3 bundle verification accepts one).
+    - name: workflows
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com/example-bank
+              subjectRegExp: '^https://github\.com/example-bank/platform-workflows/\.github/workflows/(sign|import-third-party)\.yml@refs/heads/main$'
+        tuf:
+          mirror: https://tuf.sigstore.corp.example
+          root:
+            data: REPLACE_WITH_BASE64_1_ROOT_JSON
+    - name: staff
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://id.sigstore.corp.example/realms/staff
+              subjectRegExp: '^[a-z0-9._-]+@example-bank\.com$'
+        tuf:
+          mirror: https://tuf.sigstore.corp.example
+          root:
+            data: REPLACE_WITH_BASE64_1_ROOT_JSON
+  validations:
+    - expression: >-
+        (images.?containers.orValue([]) + images.?initContainers.orValue([]) +
+         images.?ephemeralContainers.orValue([]))
+        .all(image, verifyImageSignatures(image, [attestors.workflows]) > 0 ||
+                    verifyImageSignatures(image, [attestors.staff]) > 0)
+      message: >-
+        Image must be signed by a central workflow or by an example-bank
+        staff identity through Keycloak.

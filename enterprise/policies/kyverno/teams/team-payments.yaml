@@ -1,0 +1,68 @@
+# Team policy (example): images in the payments namespace must be built from
+# the payments-api repository (or be centrally imported vendor images). It narrows the baseline; both must pass.
+# Copy per team; the namespace list is the team's Argo CD project.
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedImageValidatingPolicy
+metadata:
+  name: payments-only-from-payments-api
+  namespace: payments
+spec:
+  validationActions: [Audit]
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE", "UPDATE"]
+  # Every approved registry: a team policy that matched only payments/* would
+  # let another team's image (signed by sign.yml from another repository) run here.
+  matchImageReferences:
+    - glob: "333333333333.dkr.ecr.me-central-1.amazonaws.com/*"
+    - glob: "examplebank.azurecr.io/*"
+    - glob: "harbor.corp.example/*"
+  credentials:
+    providers: [default]
+  attestors:
+    # The team's own builds: sign.yml called from example-bank/payments-api.
+    # The ref is not pinned here: sign.yml itself only signs for main or v*
+    # release tags (06-ci-github.md §2), and pinning refs/heads/main would deny
+    # tag releases.
+    - name: paymentsBuilds
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com/example-bank
+              subject: https://github.com/example-bank/platform-workflows/.github/workflows/sign.yml@refs/heads/main
+          # Enforced by Kyverno v1.19 (only the five githubWorkflow* keys are).
+          additionalExtensions:
+            githubWorkflowRepository: example-bank/payments-api
+        tuf:
+          mirror: https://tuf.sigstore.corp.example
+          root:
+            data: REPLACE_WITH_BASE64_1_ROOT_JSON
+    # Vendor images the team runs (redis, ...), imported and re-signed centrally.
+    - name: imported
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com/example-bank
+              subject: https://github.com/example-bank/platform-workflows/.github/workflows/import-third-party.yml@refs/heads/main
+        tuf:
+          mirror: https://tuf.sigstore.corp.example
+          root:
+            data: REPLACE_WITH_BASE64_1_ROOT_JSON
+  validations:
+    - expression: >-
+        (images.?containers.orValue([]) + images.?initContainers.orValue([]) +
+         images.?ephemeralContainers.orValue([]))
+        .all(image, verifyImageSignatures(image, [attestors.paymentsBuilds]) > 0 ||
+                    verifyImageSignatures(image, [attestors.imported]) > 0)
+      message: >-
+        Images in payments must be built from example-bank/payments-api (signed by
+        the central sign.yml) or imported by import-third-party.yml.

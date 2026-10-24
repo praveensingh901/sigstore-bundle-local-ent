@@ -1,0 +1,79 @@
+# Fulcio — chart sigstore/fulcio 2.11.4 (fulcio v1.9.0)
+# Layering: common/fulcio.yaml -> <env>/fulcio.yaml (Argo CD valueFiles).
+# The CA key is the KMS key alias/sigstore/fulcio-ca in the security account
+# (kmsca); credentials come from IRSA, so the chart's static-key path
+# (server.kmsType: aws) stays off.
+forceNamespace: fulcio-system
+namespace:
+  name: fulcio-system
+  create: false
+
+server:
+  fullnameOverride: fulcio-server
+  replicaCount: 3
+  kmsType: none                 # IRSA, not access keys
+  logging:
+    production: true
+  image:
+    # Mirrored into the platform ECR by the image-import workflow, digest unchanged.
+    registry: 222222222222.dkr.ecr.me-central-1.amazonaws.com/mirror/ghcr.io
+    repository: sigstore/fulcio
+    version: v1.9.0@sha256:2de0226c5f82008091a4c9de4f7b84b081f2bff1d13530d7f7357a6ba19d3835
+  args:
+    certificateAuthority: kmsca
+    # kms_resource and kms_cert_chain are set per environment.
+    ct_log_url: http://ctlog.ctlog-system.svc/sigstore
+  serviceAccount:
+    create: true
+    name: fulcio-server         # must match the IRSA trust (terraform modules/platform/iam.tf)
+    mountToken: false           # IRSA injects its own projected token
+  # Dedicated node group for the two signing services (terraform eks.tf).
+  nodeSelector:
+    sigstore.example-bank.com/pool: signing
+  tolerations:
+    - key: sigstore.example-bank.com/signing
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: fulcio
+          topologyKey: topology.kubernetes.io/zone
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65533
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { memory: 512Mi }
+  ingress:
+    http:
+      enabled: true
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/scheme: internal
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/group.name: sigstore-signing
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+        alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+        alb.ingress.kubernetes.io/healthcheck-path: /healthz
+        alb.ingress.kubernetes.io/healthcheck-port: "5555"
+        # certificate-arn and security-groups: per environment
+      hosts:
+        - host: fulcio.sigstore.corp.example
+          path: /
+      tls: []                   # TLS terminates on the ALB (ACM private certificate)
+    grpc:
+      enabled: false            # cosign uses HTTP/JSON
+
+createcerts:
+  enabled: false                # CA comes from the ceremony, never generated
+
+ctlog:
+  enabled: false                # separate release (ctlog.yaml)
+
+# Fulcio's own config file (YAML format). Issuers are environment-specific.
+config:
+  format: yaml

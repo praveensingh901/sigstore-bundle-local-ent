@@ -1,0 +1,127 @@
+# Realm "staff": people sign through Keycloak, which brokers Entra ID and
+# AD FS (03-identity.md §2). Secrets are placeholders resolved by the
+# operator from Kubernetes Secrets (synced from Secrets Manager), never in Git.
+#
+# The operator imports a realm once; later edits are made through GitOps by
+# re-creating the import in a maintenance window or by the Keycloak admin API.
+apiVersion: k8s.keycloak.org/v2beta1
+kind: KeycloakRealmImport
+metadata:
+  name: staff
+  namespace: keycloak
+spec:
+  keycloakCRName: keycloak
+  placeholders:
+    ENTRA_TENANT_ID:
+      secret: { name: keycloak-idp, key: entra-tenant-id }
+    ENTRA_CLIENT_ID:
+      secret: { name: keycloak-idp, key: entra-client-id }
+    ENTRA_CLIENT_SECRET:
+      secret: { name: keycloak-idp, key: entra-client-secret }
+    ADFS_CLIENT_SECRET:
+      secret: { name: keycloak-idp, key: adfs-client-secret }
+  realm:
+    realm: staff
+    enabled: true
+    displayName: Example Bank staff signing
+    sslRequired: all
+    registrationAllowed: false
+    loginWithEmailAllowed: true
+    duplicateEmailsAllowed: false
+    # Token lifetimes (03 §2.1)
+    accessTokenLifespan: 300
+    ssoSessionIdleTimeout: 1800
+    ssoSessionMaxLifespan: 36000
+    oauth2DeviceCodeLifespan: 600
+    oauth2DevicePollingInterval: 5
+    bruteForceProtected: true
+    clients:
+      - clientId: sigstore
+        name: Sigstore (cosign)
+        protocol: openid-connect
+        publicClient: true
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        implicitFlowEnabled: false
+        serviceAccountsEnabled: false
+        redirectUris:
+          - http://localhost:8765/auth/callback
+        webOrigins: []
+        attributes:
+          pkce.code.challenge.method: S256
+          oauth2.device.authorization.grant.enabled: "true"
+        defaultClientScopes: [email, profile]
+        optionalClientScopes: []
+        protocolMappers:
+          - name: aud-sigstore
+            protocol: openid-connect
+            protocolMapper: oidc-audience-mapper
+            config:
+              included.client.audience: sigstore
+              id.token.claim: "true"
+              access.token.claim: "true"
+    identityProviders:
+      - alias: entra
+        displayName: Example Bank (Microsoft Entra ID)
+        providerId: oidc
+        enabled: true
+        # Brokered e-mails become email_verified=true. Safe only because e-mail
+        # is taken from the UPN (mapper below), which Entra limits to verified
+        # tenant domains, and the Entra app registration requires assignment
+        # to an employee group (no guests). Entra's own `email` claim is not
+        # verified and must not be used ("nOAuth").
+        trustEmail: true
+        storeToken: false
+        firstBrokerLoginFlowAlias: first broker login
+        config:
+          issuer: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/v2.0
+          authorizationUrl: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/authorize
+          tokenUrl: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/token
+          jwksUrl: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/discovery/v2.0/keys
+          useJwksUrl: "true"
+          validateSignature: "true"
+          clientId: ${ENTRA_CLIENT_ID}
+          clientSecret: ${ENTRA_CLIENT_SECRET}
+          clientAuthMethod: client_secret_post
+          defaultScope: openid profile
+          pkceEnabled: "true"
+          pkceMethod: S256
+          syncMode: FORCE
+          # Use ID token claims only, so Keycloak never calls Graph userinfo.
+          # E-mail comes from the "upn" optional claim (mapper below); Entra's own
+          # "email" claim is unverified and deliberately not used.
+          disableUserInfo: "true"
+      - alias: adfs
+        displayName: Example Bank (AD FS)
+        providerId: oidc
+        enabled: true
+        trustEmail: true
+        storeToken: false
+        config:
+          issuer: https://adfs.corp.example/adfs
+          authorizationUrl: https://adfs.corp.example/adfs/oauth2/authorize
+          tokenUrl: https://adfs.corp.example/adfs/oauth2/token
+          jwksUrl: https://adfs.corp.example/adfs/discovery/keys
+          useJwksUrl: "true"
+          validateSignature: "true"
+          clientId: sigstore-keycloak
+          clientSecret: ${ADFS_CLIENT_SECRET}
+          clientAuthMethod: client_secret_post
+          defaultScope: openid email profile allatclaims
+          syncMode: FORCE
+          disableUserInfo: "true"
+    identityProviderMappers:
+      - name: entra-email-from-upn
+        identityProviderAlias: entra
+        identityProviderMapper: oidc-user-attribute-idp-mapper
+        config:
+          claim: upn                  # optional claim "upn" on the app registration
+          user.attribute: email
+          syncMode: FORCE
+      - name: email-from-upn          # AD FS: UPN must equal the mailbox address
+        identityProviderAlias: adfs
+        identityProviderMapper: oidc-user-attribute-idp-mapper
+        config:
+          claim: upn
+          user.attribute: email
+          syncMode: FORCE

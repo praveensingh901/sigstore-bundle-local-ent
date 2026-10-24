@@ -1,0 +1,7 @@
+# aws-privateca-issuer v1.11.1: cert-manager issuer backed by the shared AWS Private CA.
+replicaCount: 2
+serviceAccount:
+  create: true
+  name: aws-privateca-issuer        # IRSA trust in terraform modules/platform/iam.tf
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::222222222222:role/sigstore-prod-pca
