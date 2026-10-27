@@ -82,6 +82,7 @@ kubectl --context kind-sigstore -n demo run bad --image=registry.sigstore.local/
 | Every file and value explained | [10 Configuration Reference](10-configuration-reference.md) |
 | What was tested, how, and what wasn't | [11 Test Report](11-test-report.md) |
 | What every tool is and why it's used | [12 Tools Reference](12-tools-reference.md) · Word / PowerPoint versions in docs/ |
+| Prefer a UI for config, install and health checks | [14 Control Panel dashboard](14-dashboard.md) — `scripts/dashboard.sh` (local, offline) |
 
 ## 7. Endpoints and credentials
 

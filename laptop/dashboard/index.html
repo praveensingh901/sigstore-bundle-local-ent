@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sigstore Control Panel</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f9; --surface: #ffffff; --surface-2: #eef1f6; --border: #cfd6e0; --text: #17202e;
+  --muted: #566274; --accent: #1f5fbf; --accent-text: #ffffff; --focus: #b45309;
+  --pass-bg: #dcf3e3; --pass-fg: #0b5a27; --fail-bg: #fbdcdc; --fail-fg: #8f1212;
+  --warn-bg: #fdefc7; --warn-fg: #7a4b00; --skip-bg: #e6e9ef; --skip-fg: #3d4757;
+  --run-bg: #dbe8fb; --run-fg: #123f86; --danger: #b3261e; --code-bg: #0f1722; --code-fg: #d7e0ee;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e141d; --surface: #161e2a; --surface-2: #1d2736; --border: #2f3c50; --text: #e6ebf3;
+    --muted: #9aa8bd; --accent: #6aa3f5; --accent-text: #08101c; --focus: #f5b14c;
+    --pass-bg: #123a22; --pass-fg: #8fe0aa; --fail-bg: #4a1717; --fail-fg: #ffb3b3;
+    --warn-bg: #46340a; --warn-fg: #f6d58a; --skip-bg: #273142; --skip-fg: #b9c4d6;
+    --run-bg: #14305e; --run-fg: #a9c9fb; --danger: #ff8a80; --code-bg: #0a0f17; --code-fg: #d7e0ee;
+  }
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.45; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+header.top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px 0; position: sticky; top: 0; z-index: 5; }
+.brand { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.brand h1 { font-size: 1.25rem; margin: 0; }
+.brand .meta { color: var(--muted); font-size: .85rem; }
+.runstate { margin-left: auto; font-size: .85rem; padding: 3px 10px; border-radius: 999px; background: var(--skip-bg); color: var(--skip-fg); }
+.runstate.busy { background: var(--run-bg); color: var(--run-fg); }
+[role=tablist] { display: flex; gap: 4px; margin-top: 10px; }
+[role=tab] { font: inherit; border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--muted);
+  padding: 9px 18px; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; }
+[role=tab][aria-selected=true] { background: var(--bg); color: var(--text); border-color: var(--border); position: relative; top: 1px; }
+[role=tab]:hover { color: var(--text); }
+main { max-width: 1280px; margin: 0 auto; padding: 22px 24px 60px; }
+h2 { font-size: 1.15rem; margin: 0 0 12px; }
+h3 { font-size: 1rem; margin: 18px 0 8px; }
+p.lead { color: var(--muted); margin: 0 0 16px; max-width: 80ch; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.tile .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.tile .big { font-size: 2rem; font-weight: 700; margin: 4px 0; }
+.tile .sub { color: var(--muted); font-size: .85rem; min-height: 2.4em; }
+progress { width: 100%; height: 10px; accent-color: var(--accent); }
+button { font: inherit; cursor: pointer; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 7px 14px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button.danger { background: transparent; color: var(--danger); border-color: var(--danger); font-weight: 600; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.badge { display: inline-block; font-size: .78rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.PASS, .passed { background: var(--pass-bg); color: var(--pass-fg); }
+.FAIL, .failed { background: var(--fail-bg); color: var(--fail-fg); }
+.WARN { background: var(--warn-bg); color: var(--warn-fg); }
+.SKIP, .notrun { background: var(--skip-bg); color: var(--skip-fg); }
+.running { background: var(--run-bg); color: var(--run-fg); }
+code, pre, .mono { font-family: var(--mono); font-size: .86rem; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.muted { color: var(--muted); }
+.hint { font-size: .85rem; color: var(--muted); }
+/* configure */
+fieldset { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin: 0 0 16px; padding: 8px 16px 14px; }
+legend { font-weight: 700; padding: 0 8px; }
+.field { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 4px 18px; padding: 10px 0; border-top: 1px solid var(--border); }
+.field:first-of-type { border-top: none; }
+.field label { font-family: var(--mono); font-size: .85rem; font-weight: 600; word-break: break-all; padding-top: 7px; }
+.field input[type=text] { width: 100%; font: var(--mono); font-size: .9rem; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.field input[aria-invalid=true] { border-color: var(--danger); }
+.field .ro { padding-top: 6px; font-family: var(--mono); font-size: .88rem; word-break: break-all; }
+.field .help { grid-column: 2; font-size: .83rem; color: var(--muted); }
+.field .err { grid-column: 2; font-size: .85rem; color: var(--danger); font-weight: 600; }
+.field .type { font-size: .75rem; color: var(--muted); margin-left: 8px; font-family: var(--sans); font-weight: 400; }
+.changed input { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+pre.diff, pre.log { background: var(--code-bg); color: var(--code-fg); padding: 12px; border-radius: 8px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-word; }
+pre.log { max-height: 420px; min-height: 120px; }
+pre.diff { max-height: 360px; }
+.dl-add { color: #7ee2a0; } .dl-del { color: #ff9b9b; } .dl-hdr { color: #8fb8ff; }
+.ll-ok { color: #7ee2a0; } .ll-err { color: #ff9b9b; } .ll-warn { color: #f6d58a; } .ll-info { color: #8fb8ff; } .ll-meta { color: #8c9ab0; }
+.notice { border-left: 4px solid var(--warn-fg); background: var(--warn-bg); color: var(--warn-fg); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+.notice.ok { border-color: var(--pass-fg); background: var(--pass-bg); color: var(--pass-fg); }
+.notice.bad { border-color: var(--fail-fg); background: var(--fail-bg); color: var(--fail-fg); }
+.notice ul { margin: 6px 0 0 18px; padding: 0; }
+/* install */
+.steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 14px; }
+.step { display: flex; flex-direction: column; gap: 8px; }
+.step header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.step .num { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+.step .name { font-weight: 700; font-family: var(--mono); font-size: .9rem; word-break: break-all; }
+.step details summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
+.step pre.desc { white-space: pre-wrap; font-size: .8rem; color: var(--muted); margin: 6px 0 0; max-height: 220px; overflow: auto; font-family: var(--mono); }
+.step .when { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
+.step .actions { margin-top: auto; }
+.step select { font: inherit; padding: 5px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.online { background: var(--warn-bg); color: var(--warn-fg); }
+.danger-zone { border: 2px solid var(--danger); border-radius: 10px; padding: 14px; margin-top: 24px; }
+.danger-zone h3 { color: var(--danger); margin-top: 0; }
+.danger-zone input[type=text] { font: var(--mono); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.logpanel { margin-top: 22px; }
+/* validate */
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: .88rem; }
+th { background: var(--surface-2); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+td.detail { word-break: break-word; max-width: 46ch; }
+td.fix { color: var(--muted); font-family: var(--mono); font-size: .8rem; word-break: break-word; }
+.summary { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+#toast { position: fixed; right: 18px; bottom: 18px; max-width: 420px; z-index: 20; }
+#toast div { background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 8px; margin-top: 8px; }
+.sr { position: absolute; left: -9999px; }
+[hidden] { display: none !important; }
+@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .field { grid-template-columns: 200px minmax(0, 1fr); } .steps { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<a class="sr" href="#main">Skip to content</a>
+<header class="top">
+  <div class="brand">
+    <h1>Sigstore Control Panel</h1>
+    <span class="meta" id="kitinfo">offline kit &middot; local only</span>
+    <span class="runstate" id="runstate" role="status">idle</span>
+  </div>
+  <div role="tablist" aria-label="Sections" id="tabs">
+    <button role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" tabindex="0">Overview</button>
+    <button role="tab" id="tab-configure" aria-controls="panel-configure" aria-selected="false" tabindex="-1">Configure</button>
+    <button role="tab" id="tab-install" aria-controls="panel-install" aria-selected="false" tabindex="-1">Install</button>
+    <button role="tab" id="tab-validate" aria-controls="panel-validate" aria-selected="false" tabindex="-1">Validate</button>
+  </div>
+</header>
+<main id="main">
+  <div id="fatal" class="notice bad" hidden role="alert"></div>
+
+  <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+    <h2>Overview</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <div class="row">
+        <strong>Last validation:</strong> <span id="lastval">never</span>
+        <span style="flex:1"></span>
+        <button class="primary" id="ov-validate">Run all checks</button>
+        <button id="ov-refresh">Refresh</button>
+      </div>
+      <p class="hint" id="ov-note">Install progress counts the steps that passed when run from this dashboard. Steps run in a terminal are not tracked; use Validate to see the real state of the stack.</p>
+    </div>
+  </section>
+
+  <section id="panel-configure" role="tabpanel" aria-labelledby="tab-configure" hidden>
+    <h2>Configure <code>config/env.sh</code></h2>
+    <p class="lead">Only allowlisted settings can be edited; everything else is shown read-only. Preview first, then Save. Saving keeps <code>config/env.sh.bak</code>, comments and ordering. Secrets (<code>pki/secrets.env</code>, <code>*.key</code>) are never shown here.</p>
+    <div class="row" style="margin-bottom:14px">
+      <button id="cfg-preview" class="primary">Preview changes</button>
+      <button id="cfg-save" disabled>Save</button>
+      <button id="cfg-reset">Discard edits</button>
+      <span class="hint" id="cfg-status" role="status"></span>
+    </div>
+    <div id="cfg-result"></div>
+    <form id="cfg-form" autocomplete="off" onsubmit="return false"></form>
+  </section>
+
+  <section id="panel-install" role="tabpanel" aria-labelledby="tab-install" hidden>
+    <h2>Install</h2>
+    <p class="lead">One script runs at a time. Output streams live (secrets are redacted). Status is stored in <code>out/dashboard/state.json</code>, logs in <code>out/dashboard/logs/</code>.</p>
+    <div class="row" style="margin-bottom:14px">
+      <button class="primary" id="run-all">Run all (install-all.sh)</button>
+      <label>AUTH for the demo signature
+        <select id="all-auth"><option value="">script default (password)</option><option>password</option><option>browser</option><option>device</option><option>ci</option></select>
+      </label>
+      <button id="stop-job" class="danger" hidden>Stop running script</button>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div class="danger-zone" id="danger" hidden>
+      <h3>Danger zone</h3>
+      <div id="danger-body"></div>
+    </div>
+    <div class="logpanel card">
+      <div class="row"><strong id="log-title">Log</strong><span class="muted" id="log-meta"></span></div>
+      <pre class="log" id="install-log" tabindex="0" role="log" aria-label="Script output">Select "View log" on a step, or run one.</pre>
+    </div>
+  </section>
+
+  <section id="panel-validate" role="tabpanel" aria-labelledby="tab-validate" hidden>
+    <h2>Validate</h2>
+    <p class="lead">Checks run from this laptop with the kit's TLS CA. A check whose prerequisite is missing is reported as SKIP with the reason.</p>
+    <div class="row" id="val-buttons" style="margin-bottom:10px"></div>
+    <div class="summary" id="val-summary" role="status"></div>
+    <div style="overflow-x:auto"><table id="val-table">
+      <thead><tr><th scope="col">Group</th><th scope="col">Check</th><th scope="col">Result</th><th scope="col">Detail</th><th scope="col">Fix hint</th></tr></thead>
+      <tbody id="val-body"><tr><td colspan="5" class="muted">No results yet. Run a check.</td></tr></tbody>
+    </table></div>
+    <h3>Signing smoke test</h3>
+    <div class="card">
+      <p class="hint" style="margin-top:0">Runs <code>scripts/10-sign-and-verify.sh</code> with <code>AUTH=ci</code>: builds and pushes the demo image, signs it keyless and verifies it. <strong>This writes a new entry to the Rekor log.</strong></p>
+      <div class="row">
+        <label><input type="checkbox" id="smoke-ok"> I understand this writes a Rekor entry</label>
+        <button id="smoke-run" disabled>Run signing smoke test</button>
+        <span id="smoke-result"></span>
+      </div>
+    </div>
+    <h3>Reference: <code>verify-stack.sh</code></h3>
+    <div class="row" style="margin-bottom:8px"><button id="verify-run">Run verify-stack.sh</button><span id="verify-result"></span></div>
+    <pre class="log" id="verify-log" tabindex="0" role="log" aria-label="verify-stack output">Not run yet.</pre>
+  </section>
+</main>
+<div id="toast" aria-live="polite"></div>
+
+<script>
+"use strict";
+(() => {
+  // ---------------------------------------------------------------- token + API
+  let TOKEN = "";
+  try {
+    const m = /(?:^|[#&])token=([A-Za-z0-9_\-]+)/.exec(location.hash);
+    if (m) { TOKEN = m[1]; try { sessionStorage.setItem("sgcp-token", TOKEN); } catch (e) {} }
+    else { try { TOKEN = sessionStorage.getItem("sgcp-token") || ""; } catch (e) {} }
+    if (location.hash) history.replaceState(null, "", location.pathname);
+  } catch (e) {}
+
+  const $ = (id) => document.getElementById(id);
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === false || v == null) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : String(v));
+    }
+    for (const kid of kids.flat()) if (kid != null) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    return n;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+  async function api(path, body) {
+    const opt = { headers: { "X-Dashboard-Token": TOKEN }, cache: "no-store" };
+    if (body !== undefined) { opt.method = "POST"; opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+    const r = await fetch(path, opt);
+    let data = null;
+    try { data = await r.json(); } catch (e) {}
+    if (!r.ok && !(data && (data.errors || data.diff !== undefined))) {
+      const err = new Error((data && data.error) || ("HTTP " + r.status));
+      err.status = r.status;
+      throw err;
+    }
+    if (data && !r.ok) data._status = r.status;
+    return data;
+  }
+  function toast(msg) {
+    const t = el("div", { text: msg });
+    $("toast").append(t);
+    setTimeout(() => t.remove(), 6000);
+  }
+  function fatal(msg) { const f = $("fatal"); f.textContent = msg; f.hidden = false; }
+  const fmtTime = (iso) => { if (!iso) return "never"; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString(); };
+  const badge = (status, text) => el("span", { class: "badge " + status }, (text || status));
+  const ICON = { PASS: "✔ PASS", FAIL: "✘ FAIL", WARN: "⚠ WARN", SKIP: "➖ SKIP" };
+
+  // ---------------------------------------------------------------- tabs
+  const TABS = ["overview", "configure", "install", "validate"];
+  function showTab(name, focus) {
+    for (const t of TABS) {
+      const sel = t === name;
+      const b = $("tab-" + t);
+      b.setAttribute("aria-selected", sel ? "true" : "false");
+      b.tabIndex = sel ? 0 : -1;
+      $("panel-" + t).hidden = !sel;
+      if (sel && focus) b.focus();
+    }
+    if (name === "overview") loadOverview();
+    if (name === "configure") loadConfig();
+    if (name === "install") loadSteps();
+    if (name === "validate") loadValidateLast();
+  }
+  TABS.forEach((t, i) => {
+    $("tab-" + t).addEventListener("click", () => showTab(t));
+    $("tab-" + t).addEventListener("keydown", (e) => {
+      let j = null;
+      if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
+      else if (e.key === "ArrowLeft") j = (i + TABS.length - 1) % TABS.length;
+      else if (e.key === "Home") j = 0; else if (e.key === "End") j = TABS.length - 1;
+      if (j !== null) { e.preventDefault(); showTab(TABS[j], true); }
+    });
+  });
+
+  // ---------------------------------------------------------------- overview
+  function tile(label, big, sub, status, pct) {
+    return el("div", { class: "card tile" },
+      el("div", { class: "label" }, label),
+      el("div", { class: "big" }, big),
+      pct != null ? el("progress", { max: 100, value: pct, "aria-label": label }) : null,
+      el("div", { class: "sub" }, status ? [badge(status), " "] : null, sub));
+  }
+  function daysStatus(d, warn) { return d == null ? "SKIP" : d < 0 ? "FAIL" : d < warn ? "WARN" : "PASS"; }
+  async function loadOverview() {
+    let o;
+    try { o = await api("/api/overview"); } catch (e) { fatal("Cannot load overview: " + e.message); return; }
+    const i = o.install, v = o.validation.counts;
+    const tiles = $("tiles"); clear(tiles);
+    tiles.append(
+      tile("Install progress", i.passed + " / " + i.total,
+        i.failed.length ? "failed: " + i.failed.join(", ") : (i.next ? "next step: " + i.next : "all steps passed"),
+        i.failed.length ? "FAIL" : (i.passed === i.total ? "PASS" : "WARN"), Math.round(100 * i.passed / Math.max(1, i.total))),
+      tile("Validation", v.PASS + " pass / " + v.FAIL + " fail",
+        v.WARN + " warn, " + v.SKIP + " skipped", (v.PASS + v.FAIL + v.WARN + v.SKIP) === 0 ? "SKIP" : v.FAIL ? "FAIL" : v.WARN ? "WARN" : "PASS"),
+      tile("Earliest certificate expiry", o.certs.days == null ? "n/a" : o.certs.days + " days",
+        o.certs.error || ("closest: " + o.certs.name), daysStatus(o.certs.days, 30)),
+      tile("TUF metadata expiry", o.tuf.days == null ? "n/a" : o.tuf.days + " days",
+        o.tuf.error || "root of trust distribution (step 12)", daysStatus(o.tuf.days, 30)));
+    $("lastval").textContent = fmtTime(o.validation.time);
+    setRunning(o.running);
+  }
+  $("ov-validate").addEventListener("click", () => { showTab("validate"); runValidation(null); });
+  $("ov-refresh").addEventListener("click", loadOverview);
+
+  // ---------------------------------------------------------------- configure
+  let cfg = null, cfgPreviewed = false;
+  async function loadConfig() {
+    try { cfg = await api("/api/config"); } catch (e) { fatal("Cannot load config: " + e.message); return; }
+    renderConfig();
+  }
+  function renderConfig() {
+    const form = $("cfg-form"); clear(form);
+    for (const sec of cfg.sections) {
+      const fs = el("fieldset", {}, el("legend", {}, sec.name));
+      for (const f of sec.fields) {
+        const id = "f-" + f.key;
+        const row = el("div", { class: "field", "data-key": f.key });
+        row.append(el("label", { for: f.editable ? id : null, id: "l-" + f.key }, f.key,
+          el("span", { class: "type" }, f.editable ? f.type : "read-only")));
+        if (f.editable) {
+          const inp = el("input", { type: "text", id, name: f.key, value: f.value, spellcheck: false, "aria-describedby": "h-" + f.key + " e-" + f.key });
+          inp.dataset.orig = f.value;
+          inp.addEventListener("input", () => {
+            row.classList.toggle("changed", inp.value !== inp.dataset.orig);
+            cfgPreviewed = false; $("cfg-save").disabled = true;
+          });
+          row.append(inp);
+        } else {
+          row.append(el("div", { class: "ro", "aria-labelledby": "l-" + f.key }, f.raw));
+        }
+        row.append(el("div", { class: "help", id: "h-" + f.key }, f.help || ""));
+        row.append(el("div", { class: "err", id: "e-" + f.key, hidden: true, role: "alert" }));
+        fs.append(row);
+      }
+      form.append(fs);
+    }
+    $("cfg-result").textContent = ""; $("cfg-save").disabled = true;
+  }
+  function collectChanges() {
+    const ch = {};
+    for (const inp of $("cfg-form").querySelectorAll("input[type=text]")) if (inp.value !== inp.dataset.orig) ch[inp.name] = inp.value;
+    return ch;
+  }
+  function showErrors(errors) {
+    for (const inp of $("cfg-form").querySelectorAll("input[type=text]")) {
+      const msg = errors[inp.name], e = $("e-" + inp.name);
+      inp.setAttribute("aria-invalid", msg ? "true" : "false");
+      e.hidden = !msg; e.textContent = msg || "";
+    }
+  }
+  function renderDiff(diff) {
+    const pre = el("pre", { class: "diff", tabindex: 0, "aria-label": "Unified diff of env.sh" });
+    for (const ln of diff.split("\n")) {
+      const cls = ln.startsWith("+++") || ln.startsWith("---") || ln.startsWith("@@") ? "dl-hdr" : ln.startsWith("+") ? "dl-add" : ln.startsWith("-") ? "dl-del" : "";
+      pre.append(el("span", { class: cls }, ln + "\n"));
+    }
+    return pre;
+  }
+  function renderRerun(r) {
+    if (!r.rerun.length) return null;
+    return el("div", { class: "notice", role: "note" },
+      el("strong", {}, "Re-run these install steps after saving: " + r.rerun.map((x) => x.step).join(", ")),
+      el("ul", {}, r.reasons.map((x) => el("li", {}, el("code", {}, x.key), " → " + x.steps.join(", ") + ": " + x.why))));
+  }
+  async function cfgPreview(save) {
+    const changes = collectChanges();
+    if (!Object.keys(changes).length) { $("cfg-result").textContent = ""; showErrors({}); $("cfg-status").textContent = "No edits."; return; }
+    let r;
+    try { r = save ? await api("/api/config/save", { changes, base_sha: cfg.sha }) : await api("/api/config/preview", { changes }); }
+    catch (e) { $("cfg-result").replaceChildren(el("div", { class: "notice bad", role: "alert" }, e.message)); return; }
+    showErrors(r.errors || {});
+    const nerr = Object.keys(r.errors || {}).length;
+    if (save && r.saved) {
+      await loadConfig();
+      const box = $("cfg-result"); clear(box);
+      box.append(el("div", { class: "notice ok", role: "status" }, "Saved. Previous version kept as " + r.backup + "."));
+      if (r.diff) box.append(renderDiff(r.diff));
+      const rr = renderRerun(r); if (rr) box.append(rr);
+      toast("env.sh saved");
+      $("cfg-status").textContent = "Saved.";
+      return;
+    }
+    const box = $("cfg-result"); clear(box);
+    if (nerr) box.append(el("div", { class: "notice bad", role: "alert" }, nerr + " value(s) rejected. Fix the highlighted fields."));
+    if (r.diff) box.append(renderDiff(r.diff));
+    const rr = renderRerun(r); if (rr) box.append(rr);
+    cfgPreviewed = !nerr; $("cfg-save").disabled = !!nerr;
+    $("cfg-status").textContent = nerr ? "Fix the errors, then preview again." : "Review the diff, then Save.";
+  }
+  $("cfg-preview").addEventListener("click", () => cfgPreview(false));
+  $("cfg-save").addEventListener("click", () => { if (cfgPreviewed) cfgPreview(true); });
+  $("cfg-reset").addEventListener("click", () => { renderConfig(); $("cfg-status").textContent = "Edits discarded."; });
+
+  // ---------------------------------------------------------------- streaming logs
+  let activeStream = null;
+  function lineClass(t) {
+    if (t.startsWith("# ")) return "ll-meta";
+    if (t.includes("✘")) return "ll-err";
+    if (t.includes("✔") || /\bPASS\b/.test(t)) return "ll-ok";
+    if (/^\s*!\s/.test(t) || /\bWARN/.test(t)) return "ll-warn";
+    if (t.includes("==>") || t.includes("####")) return "ll-info";
+    if (/\bFAIL\b/.test(t)) return "ll-err";
+    return "";
+  }
+  function appendLine(pre, t) {
+    const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+    pre.append(el("span", { class: lineClass(t) }, t + "\n"));
+    if (pre.childNodes.length > 6000) pre.removeChild(pre.firstChild);
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  }
+  function showStaticLog(pre, text) {
+    clear(pre);
+    for (const ln of text.split("\n")) if (ln !== "") appendLine(pre, ln);
+    if (!pre.firstChild) pre.textContent = "(no log yet)";
+    pre.scrollTop = pre.scrollHeight;
+  }
+  async function streamLog(key, pre, onEnd) {
+    if (activeStream) activeStream.abort();
+    const ac = new AbortController(); activeStream = ac;
+    clear(pre);
+    try {
+      const r = await fetch("/api/logs/" + key + "/stream?from=0", { headers: { "X-Dashboard-Token": TOKEN }, signal: ac.signal, cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf("\n\n")) !== -1) {
+          const ev = buf.slice(0, idx); buf = buf.slice(idx + 2);
+          let type = "message", data = "";
+          for (const l of ev.split("\n")) { if (l.startsWith("event: ")) type = l.slice(7); else if (l.startsWith("data: ")) data += l.slice(6); }
+          if (type === "line") { try { appendLine(pre, JSON.parse(data)); } catch (e) {} }
+          else if (type === "end") { let d = {}; try { d = JSON.parse(data); } catch (e) {} if (onEnd) onEnd(d); }
+        }
+      }
+    } catch (e) { if (e.name !== "AbortError") appendLine(pre, "[stream closed: " + e.message + "]"); }
+    if (activeStream === ac) activeStream = null;
+  }
+  async function viewLog(key, pre, titleEl, metaEl) {
+    if (titleEl) titleEl.textContent = "Log: " + key;
+    const st = await api("/api/steps");
+    if (st.running === key) { if (metaEl) metaEl.textContent = " (running, live)"; streamLog(key, pre, () => { refreshAfterJob(); }); return; }
+    if (activeStream) { activeStream.abort(); activeStream = null; }
+    const r = await api("/api/logs/" + key);
+    if (metaEl) metaEl.textContent = "";
+    showStaticLog(pre, r.text);
+  }
+
+  // ---------------------------------------------------------------- run state
+  let currentRunning = null;
+  function setRunning(key) {
+    currentRunning = key;
+    const rs = $("runstate");
+    rs.textContent = key ? "running: " + key : "idle";
+    rs.classList.toggle("busy", !!key);
+    $("stop-job").hidden = !key;
+    for (const b of document.querySelectorAll("[data-needs-idle]")) b.disabled = !!key || (b.dataset.needsAck === "1" && !$(b.dataset.ack).checked);
+  }
+  function refreshAfterJob() { loadSteps(); loadOverview(); }
+  async function pollRunning() {
+    try { const s = await api("/api/steps"); if (s.running !== currentRunning) { setRunning(s.running); if (!s.running) refreshAfterJob(); } } catch (e) {}
+  }
+  setInterval(pollRunning, 4000);
+  $("stop-job").addEventListener("click", async () => { try { await api("/api/jobs/stop", {}); toast("Stop signal sent"); } catch (e) { toast(e.message); } });
+
+  async function startJob(body, logKey, pre, titleEl, metaEl) {
+    try { await api("/api/jobs/start", body); }
+    catch (e) { toast("Cannot start: " + e.message); return false; }
+    setRunning(logKey);
+    if (titleEl) titleEl.textContent = "Log: " + logKey;
+    if (metaEl) metaEl.textContent = " (running, live)";
+    streamLog(logKey, pre, async (d) => {
+      if (metaEl) metaEl.textContent = " (" + (d.status || "finished") + ", exit " + d.exit_code + ")";
+      setRunning(null); refreshAfterJob();
+      if ($("panel-validate").hidden === false) loadVerifySmokeStatus();
+    });
+    return true;
+  }
+
+  // ---------------------------------------------------------------- install
+  function stepStatus(st) { return st ? st.status : "notrun"; }
+  async function loadSteps() {
+    let d;
+    try { d = await api("/api/steps"); } catch (e) { fatal("Cannot load steps: " + e.message); return; }
+    const box = $("steps"); clear(box);
+    const dz = $("danger-body"); clear(dz);
+    for (const s of d.steps) {
+      const st = d.state[s.id] || null, status = stepStatus(st);
+      const card = el("div", { class: "card step" });
+      const head = el("header", {}, el("span", { class: "num" }, s.id), el("span", { class: "name" }, s.script.slice(3)),
+        s.online ? el("span", { class: "badge online" }, "run on the online machine") : null);
+      const info = el("div", { class: "row" },
+        el("span", { class: "badge " + status }, status === "notrun" ? "○ not run" : status === "passed" ? "✔ passed" : status === "failed" ? "✘ failed" : "▶ running"));
+      const when = el("div", { class: "when" }, st && st.finished ? ("exit " + st.exit_code + " · " + st.duration + " s · " + fmtTime(st.finished)) : (st && st.note ? st.note : ""));
+      if (st && st.note && st.finished) when.append(" · " + st.note);
+      const details = el("details", {}, el("summary", {}, s.title || "description"), el("pre", { class: "desc" }, s.description));
+      const actions = el("div", { class: "row actions" });
+      const opts = {};
+      for (const [k, vals] of Object.entries(s.options || {})) {
+        const sel = el("select", { "aria-label": k + " for step " + s.id }, vals.map((v) => el("option", { value: v }, k + "=" + v)));
+        opts[k] = sel; actions.append(sel);
+      }
+      if (!s.danger) {
+        const run = el("button", { class: "primary", "data-needs-idle": 1, onclick: async () => {
+          if (s.online && !confirm("Step " + s.id + " needs INTERNET access and should be run on the online machine. Run it here anyway?")) return;
+          const env = {}; for (const [k, sel] of Object.entries(opts)) env[k] = sel.value;
+          startJob({ kind: "step", step: s.id, env }, s.id, $("install-log"), $("log-title"), $("log-meta"));
+        } }, "Run");
+        actions.prepend(run);
+      }
+      actions.append(el("button", { onclick: () => viewLog(s.id, $("install-log"), $("log-title"), $("log-meta")) }, "View log"));
+      card.append(head, info, when, details, actions);
+      if (s.danger) {
+        const purge = el("input", { type: "checkbox", id: "purge" });
+        const conf = el("input", { type: "text", id: "confirm-td", "aria-label": "Type the confirmation word", autocomplete: "off", placeholder: "teardown" });
+        const go = el("button", { class: "danger", "data-needs-idle": 1, onclick: async () => {
+          const body = { kind: "step", step: s.id, confirm: conf.value.trim() };
+          if (purge.checked) body.args = ["--purge"];
+          if (await startJob(body, s.id, $("install-log"), $("log-title"), $("log-meta"))) conf.value = "";
+        } }, "Run teardown");
+        purge.addEventListener("change", () => { conf.placeholder = purge.checked ? "purge" : "teardown"; });
+        dz.append(el("div", {}, el("strong", {}, s.script), el("pre", { class: "desc", style: "white-space:pre-wrap" }, s.description),
+          el("div", { class: "row" }, el("label", {}, purge, " also delete pki/, out/, .generated/ (--purge; destroys the trust root)"))),
+          el("div", { class: "row", style: "margin-top:8px" }, el("label", {}, "Type ", el("code", {}, "teardown"), " (or ", el("code", {}, "purge"), " when purging): ", conf), go,
+            el("button", { onclick: () => viewLog(s.id, $("install-log"), $("log-title"), $("log-meta")) }, "View log")),
+          el("div", { class: "when" }, st && st.finished ? ("last: " + stepStatus(st) + ", exit " + st.exit_code + " · " + fmtTime(st.finished)) : ""));
+        $("danger").hidden = false;
+      } else box.append(card);
+    }
+    setRunning(d.running);
+  }
+  $("run-all").addEventListener("click", () => {
+    if (!confirm("Run install-all.sh? It deploys the whole stack (about 10-15 minutes).")) return;
+    const env = {}; if ($("all-auth").value) env.AUTH = $("all-auth").value;
+    startJob({ kind: "all", env }, "all", $("install-log"), $("log-title"), $("log-meta"));
+  });
+  $("run-all").dataset.needsIdle = "1";
+
+  // ---------------------------------------------------------------- validate
+  let groups = [], valResults = {};
+  async function loadValidateLast() {
+    let d;
+    try { d = await api("/api/validate/last"); } catch (e) { fatal("Cannot load validation: " + e.message); return; }
+    groups = d.groups;
+    valResults = {};
+    for (const [g, v] of Object.entries(d.last.groups || {})) valResults[g] = v.results;
+    renderValButtons(); renderValTable(d.last.time);
+    loadVerifySmokeStatus();
+  }
+  async function loadVerifySmokeStatus() {
+    try {
+      const s = await api("/api/steps");
+      for (const [k, id] of [["verify", "verify-result"], ["smoke", "smoke-result"]]) {
+        const st = s.state[k]; const n = $(id); clear(n);
+        if (st) n.append(badge(stepStatus(st), st.status === "running" ? "running" : (st.status === "passed" ? "✔ passed" : "✘ failed")), " exit " + (st.exit_code ?? "?") + " · " + fmtTime(st.finished || st.started));
+      }
+      setRunning(s.running);
+    } catch (e) {}
+  }
+  function renderValButtons() {
+    const box = $("val-buttons"); clear(box);
+    box.append(el("button", { class: "primary", id: "val-all", onclick: () => runValidation(null) }, "Run all checks"));
+    for (const g of groups) box.append(el("button", { onclick: () => runValidation([g.id]) }, g.title));
+  }
+  async function runValidation(ids) {
+    if (!groups.length) { const d = await api("/api/validate/last"); groups = d.groups; renderValButtons(); }
+    const btns = $("val-buttons").querySelectorAll("button"); btns.forEach((b) => { b.disabled = true; });
+    $("val-summary").textContent = "Running checks… (up to ~30 s when the cluster is down)";
+    try {
+      const r = await api("/api/validate", ids ? { groups: ids } : {});
+      const touched = new Set(ids || groups.map((g) => g.id));
+      for (const g of touched) valResults[g] = r.results.filter((x) => x.group === g);
+      renderValTable(r.time);
+    } catch (e) { $("val-summary").textContent = "Validation failed to run: " + e.message; }
+    btns.forEach((b) => { b.disabled = false; });
+  }
+  function renderValTable(time) {
+    const body = $("val-body"); clear(body);
+    const counts = { PASS: 0, FAIL: 0, WARN: 0, SKIP: 0 };
+    let n = 0;
+    for (const g of groups) {
+      for (const r of valResults[g.id] || []) {
+        n++; counts[r.status] = (counts[r.status] || 0) + 1;
+        body.append(el("tr", {}, el("td", {}, g.title), el("td", {}, r.check), el("td", {}, badge(r.status, ICON[r.status] || r.status)),
+          el("td", { class: "detail" }, r.detail), el("td", { class: "fix" }, r.status === "PASS" ? "" : r.hint)));
+      }
+    }
+    if (!n) body.append(el("tr", {}, el("td", { colspan: 5, class: "muted" }, "No results yet. Run a check.")));
+    const sum = $("val-summary"); clear(sum);
+    if (n) sum.append(badge("PASS", counts.PASS + " pass"), badge("FAIL", counts.FAIL + " fail"), badge("WARN", counts.WARN + " warn"), badge("SKIP", counts.SKIP + " skip"),
+      el("span", { class: "muted" }, "last run " + fmtTime(time)));
+  }
+  $("smoke-ok").addEventListener("change", () => { $("smoke-run").disabled = !$("smoke-ok").checked || !!currentRunning; });
+  $("smoke-run").dataset.needsIdle = "1"; $("smoke-run").dataset.needsAck = "1"; $("smoke-run").dataset.ack = "smoke-ok";
+  $("smoke-run").addEventListener("click", () => {
+    startJob({ kind: "smoke", confirm: true }, "smoke", $("verify-log"), null, null);
+    $("smoke-ok").checked = false;
+  });
+  $("verify-run").dataset.needsIdle = "1";
+  $("verify-run").addEventListener("click", () => startJob({ kind: "verify" }, "verify", $("verify-log"), null, null));
+
+  // ---------------------------------------------------------------- boot
+  if (!TOKEN) { fatal("No access token. Open the URL printed by scripts/dashboard.sh (it ends in #token=...)."); }
+  else showTab("overview");
+})();
+</script>
+</body>
+</html>

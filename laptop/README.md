@@ -51,6 +51,7 @@ Then: [docs/00-getting-started.md](docs/00-getting-started.md).
 | 11 | [Test Report](docs/11-test-report.md) — what was executed and what was not |
 | 12 | [Tools & Components Reference](docs/12-tools-reference.md) — what every tool is and why it's used ([Word](docs/Sigstore-Offline-Tools-Reference.docx) · [PowerPoint](docs/Sigstore-Offline-Tools-Overview.pptx)) |
 | 13 | [Signing git commits with gitsign](docs/13-gitsign.md) — keyless commit and tag signing against the same private stack |
+| 14 | [Control Panel dashboard](docs/14-dashboard.md) — local offline web UI: edit `env.sh`, run install steps, validate the stack (`scripts/dashboard.sh`) |
 
 ## Versions (pinned in `config/env.sh`)
 
@@ -72,10 +73,11 @@ Then: [docs/00-getting-started.md](docs/00-getting-started.md).
 
 ```
 config/    env.sh, PKI profiles, Helm values, manifests (templates), policies
-scripts/   00–13 install steps, verify-stack, backup/restore, helpers
+scripts/   00–14 install steps, verify-stack, backup/restore, helpers
 windows/   PowerShell helpers (hosts + CA trust, native cosign.exe)
 ci/        GitHub Actions, GitLab CI, Azure Pipelines examples
 examples/  demo app
+dashboard/ local Control Panel (server.py + index.html, stdlib only)
 test/      Docker-only end-to-end test (test/compose/run.sh)
 docs/      the documentation set
 bundle/ pki/ out/ .generated/   generated — never commit (see .gitignore)
