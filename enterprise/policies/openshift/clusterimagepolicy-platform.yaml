@@ -23,7 +23,7 @@ spec:
         # base64 of enterprise/pki/fulcio-chain.pem
         fulcioCAData: UkVQTEFDRS1XSVRILWJhc2U2NC1vZi1mdWxjaW8tY2hhaW4ucGVt
         # base64 of enterprise/pki/rekor.pub
-        rekorKeyData: UkVQTEFDRS1XSVRILWJhc2U2NC1vZi1yZWtvci5wdWI=
+        rekorKeyData: UkVQTEFDRS1XSVRILWJhc2U2NC1vZi1yZWtvci5wdWI=  # gitleaks:allow (base64 of a REPLACE placeholder, not a key)
         fulcioSubject:
           oidcIssuer: https://id.sigstore.corp.example/realms/ci
           signedEmail: platform-release@ci.example-bank.com

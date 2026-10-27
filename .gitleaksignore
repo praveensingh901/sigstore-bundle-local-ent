@@ -1,0 +1,5 @@
+# Findings in history that are not secrets (gitleaks fingerprint = commit:file:rule:line).
+# Newer commits mark the same lines inline with "gitleaks:allow".
+dd33f3147073285e024bf8791ed682e2b6229c54:enterprise/policies/openshift/clusterimagepolicy-platform.yaml:generic-api-key:26
+dd33f3147073285e024bf8791ed682e2b6229c54:enterprise/terraform/modules/platform/storage.tf:generic-api-key:224
+dd33f3147073285e024bf8791ed682e2b6229c54:enterprise/terraform/modules/private-ca/main.tf:generic-api-key:107

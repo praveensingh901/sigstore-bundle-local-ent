@@ -221,7 +221,7 @@ resource "aws_acm_certificate" "alb" {
   domain_name               = "*.${var.zone_name}"
   subject_alternative_names = [var.zone_name]
   certificate_authority_arn = var.pca_arn
-  key_algorithm             = "EC_prime256v1"
+  key_algorithm             = "EC_prime256v1" # gitleaks:allow (algorithm name)
   tags                      = var.tags
   lifecycle {
     create_before_destroy = true

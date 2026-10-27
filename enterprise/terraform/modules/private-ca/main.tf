@@ -104,7 +104,7 @@ resource "aws_acmpca_certificate_authority" "tls" {
   usage_mode = "GENERAL_PURPOSE"
 
   certificate_authority_configuration {
-    key_algorithm     = "EC_secp384r1"
+    key_algorithm     = "EC_secp384r1" # gitleaks:allow (algorithm name)
     signing_algorithm = "SHA384WITHECDSA"
     subject {
       common_name         = var.common_name
