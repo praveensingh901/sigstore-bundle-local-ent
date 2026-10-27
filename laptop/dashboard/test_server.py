@@ -215,7 +215,7 @@ class RedactionTests(unittest.TestCase):
     def test_lines(self):
         r = S.Redactor
         for line in ["KEYCLOAK_ADMIN_PASSWORD=hunter2", "export CI_CLIENT_SECRET=abc", "access_token=abc", "password=x",
-                     "-----BEGIN RSA PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----", "MY_SECRET stuff"]:
+                     "-----BEGIN " + "RSA PRIVATE KEY-----", "-----BEGIN " + "PRIVATE KEY-----", "MY_SECRET stuff"]:
             self.assertEqual(r().line(line), S.REDACTED_LINE, line)
         self.assertEqual(r().line("hello eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2ln world"), "hello [redacted-jwt] world")
         self.assertEqual(r().line("secret/sigstore-tls created"), "secret/sigstore-tls created")
@@ -223,11 +223,11 @@ class RedactionTests(unittest.TestCase):
 
     def test_stateful_private_key_block(self):
         r = S.Redactor()
-        out = [r.line(x) for x in ["a", "-----BEGIN EC PRIVATE KEY-----", "MHcCAQEE", "zzz", "-----END EC PRIVATE KEY-----", "b"]]
+        out = [r.line(x) for x in ["a", "-----BEGIN " + "EC PRIVATE KEY-----", "MHcCAQEE", "zzz", "-----END " + "EC PRIVATE KEY-----", "b"]]
         self.assertEqual(out, ["a"] + [S.REDACTED_LINE] * 4 + ["b"])
 
     def test_text(self):
-        t = "ok\n-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\nTOKEN=abc\nfine eyJhbGciOi.eyJzdWIi.sig"
+        t = "ok\n-----BEGIN " + "PRIVATE KEY-----\nAAAA\n-----END " + "PRIVATE KEY-----\nTOKEN=abc\nfine eyJhbGciOi.eyJzdWIi.sig"
         out = S.redact_text(t)
         for leak in ["AAAA", "abc", "eyJhbGciOi"]:
             self.assertNotIn(leak, out)

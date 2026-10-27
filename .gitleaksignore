@@ -3,3 +3,6 @@
 dd33f3147073285e024bf8791ed682e2b6229c54:enterprise/policies/openshift/clusterimagepolicy-platform.yaml:generic-api-key:26
 dd33f3147073285e024bf8791ed682e2b6229c54:enterprise/terraform/modules/platform/storage.tf:generic-api-key:224
 dd33f3147073285e024bf8791ed682e2b6229c54:enterprise/terraform/modules/private-ca/main.tf:generic-api-key:107
+# Redaction-test fixtures (PEM BEGIN markers in laptop/dashboard/test_server.py); not real keys.
+b4740c01a41047e7cdf006b1819c6999a3ca4bb7:laptop/dashboard/test_server.py:private-key:218
+16582491b03bf217c793e4b892ca2461b914a61b:laptop/dashboard/test_server.py:private-key:218
